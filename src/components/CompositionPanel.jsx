@@ -146,7 +146,7 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
   if (!session) return null;
 
   const { step, compositionState = {}, sessionId } = session;
-  const { mood, genre, subGenre, bpm, timeSignature, key: musicalKey, dynamics, instruments = [], recommendationWarning } = compositionState;
+  const { mood, genre, subGenre, bpm, timeSignature, key: musicalKey, artist, dynamics, instruments = [], recommendationWarning } = compositionState;
 
   const [activeTab, setActiveTab] = useState('brief'); // 'brief' | 'artists' | 'theory'
   const [searchTerm, setSearchTerm] = useState('');
@@ -553,6 +553,7 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
               <InfoRow icon={KeyIcon} label="Key" value={musicalKey} stepLink={2} />
               <InfoRow icon={Music} label="Genre" value={genre} stepLink={3} />
               <InfoRow icon={Sliders} label="Sub-Genre" value={subGenre} stepLink={4} />
+              <InfoRow icon={User} label="Inspiration" value={artist} stepLink={8} />
               <InfoRow icon={Clock} label="Tempo" value={bpm ? `${bpm} BPM` : null} stepLink={7} />
               <InfoRow icon={HelpCircle} label="Signature" value={timeSignature} stepLink={6} />
               <InfoRow icon={Volume2} label="Dynamics" value={dynamics} stepLink={10} />

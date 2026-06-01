@@ -10,9 +10,17 @@ export default function AudioPlayer({ audioData, onFeedback }) {
   const canvasRef = useRef(null);
   
   // Interactive 3D Spectrogram Rotation
-  const [rotation, setRotation] = useState({ x: 0.3, y: 0.5 });
+  const rotationRef = useRef({ x: 0.45, y: 0.3 }); // Default pitch/yaw
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const historyDataRef = useRef(null);
+
+  const historyRows = 32;
+  const cols = 40;
+
+  if (!historyDataRef.current) {
+    historyDataRef.current = Array(historyRows).fill(null).map(() => Array(cols).fill(0));
+  }
 
   // Plagiarism Scanner States
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -108,88 +116,143 @@ export default function AudioPlayer({ audioData, onFeedback }) {
     const ctx = canvas.getContext('2d');
     let animationId;
     
-    // Maintain frequency history
-    const historyRows = 25;
-    const cols = 30;
-    const historyData = Array(historyRows).fill(null).map(() => Array(cols).fill(0));
-    
+    const historyData = historyDataRef.current;
     let frame = 0;
+
+    // Retrieve canvas background color from CSS
+    const canvasColor = getComputedStyle(document.documentElement).getPropertyValue('--canvas').trim() || '#0A0A0F';
 
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Update history: push new procedural frequencies when playing
+      // Update history: push new procedural frequencies
       if (isPlaying) {
         const newRow = Array(cols).fill(0).map((_, i) => {
-          // Generate realistic looking frequency spectrum peaks
-          const noise = Math.sin(frame * 0.15 + i * 0.4) * 15;
-          const peak1 = Math.exp(-Math.pow(i - 8, 2) / 10) * 35 * (Math.sin(frame * 0.2) + 1.2);
-          const peak2 = Math.exp(-Math.pow(i - 20, 2) / 15) * 25 * (Math.cos(frame * 0.1) + 1.2);
-          return Math.max(2, noise + peak1 + peak2 + Math.random() * 4);
+          const t = i / (cols - 1);
+          // Bass peak on the left
+          const bass = Math.exp(-Math.pow(t - 0.15, 2) / 0.015) * 32 * (Math.sin(frame * 0.12) * 0.4 + 0.8);
+          // Mid peak in the center
+          const mids = Math.exp(-Math.pow(t - 0.5, 2) / 0.035) * 24 * (Math.cos(frame * 0.07) * 0.5 + 0.7);
+          // High peak on the right
+          const highs = Math.exp(-Math.pow(t - 0.85, 2) / 0.02) * 16 * (Math.sin(frame * 0.2) * 0.6 + 0.6);
+          // Noise factor
+          const noise = Math.random() * 4;
+          return Math.max(1, bass + mids + highs + noise);
         });
         historyData.unshift(newRow);
         historyData.pop();
       } else {
-        // Slowly decay frequency values when paused
-        for (let r = 0; r < historyRows; r++) {
-          for (let c = 0; c < cols; c++) {
-            historyData[r][c] = Math.max(0, historyData[r][c] * 0.9);
-          }
-        }
+        // Gentle flow wave when paused
+        const newRow = Array(cols).fill(0).map((_, i) => {
+          const t = i / (cols - 1);
+          const ambient1 = Math.sin(frame * 0.03 + t * 6) * 3;
+          const ambient2 = Math.cos(frame * 0.05 - t * 12) * 1.5;
+          return Math.max(1, ambient1 + ambient2 + 5);
+        });
+        historyData.unshift(newRow);
+        historyData.pop();
       }
       
       frame++;
       
-      // Draw 3D Perspective Grid
+      // Projection Setup
       const cx = canvas.width / 2;
-      const cy = canvas.height / 2 - 10;
+      const cy = canvas.height / 2 + 15;
+      const w_scale = canvas.width * 0.38;
+      const h_scale = canvas.height * 0.32;
       
-      ctx.strokeStyle = 'rgba(124, 58, 237, 0.45)'; // Purple accent wireframe
-      ctx.lineWidth = 1.2;
+      const rx = rotationRef.current.x;
+      const ry = rotationRef.current.y;
       
-      // Render from back to front to get depth sorting right
+      const getProjectedPoint = (c, r, val) => {
+        const x3d = (c / (cols - 1)) * 2 - 1;
+        const z3d = (r / (historyRows - 1)) * 2.4 - 1.2;
+        const y3d = val * 0.022; // Height amplitude
+        
+        // Rotate Y (yaw)
+        const x1 = x3d * Math.cos(ry) - z3d * Math.sin(ry);
+        const z1 = x3d * Math.sin(ry) + z3d * Math.cos(ry);
+        
+        // Rotate X (pitch)
+        const x2 = x1;
+        const y2 = y3d * Math.cos(rx) - z1 * Math.sin(rx);
+        const z2 = y3d * Math.sin(rx) + z1 * Math.cos(rx);
+        
+        // Perspective
+        const dist = 3.2;
+        const scale = dist / (dist - z2);
+        
+        return {
+          x: cx + x2 * w_scale * scale,
+          y: cy - y2 * h_scale * scale,
+          scale
+        };
+      };
+      
+      let prevRowPoints = null;
+      
+      // Render from back to front (painter's algorithm)
       for (let r = historyRows - 1; r >= 0; r--) {
         const row = historyData[r];
-        
-        // Depth factors (0 at front, 1 at back)
         const depth = r / historyRows; 
         
-        // Project coordinates
-        const scale = 1 - depth * 0.6;
-        const yOffset = depth * 55 + (Math.sin(rotation.x) * 40);
-        const w = canvas.width * 0.8 * scale;
-        const xStart = cx - w / 2;
-        const yBase = cy + yOffset;
-        
-        ctx.beginPath();
+        const points = [];
         for (let c = 0; c < cols; c++) {
-          const val = row[c];
-          
-          // Math projection with mouse rotation influence
-          const angleOffset = (c - cols / 2) * 15 * rotation.y * scale;
-          const x = xStart + (c / (cols - 1)) * w + angleOffset;
-          const y = yBase - val * scale;
-          
-          if (c === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+          points.push(getProjectedPoint(c, r, row[c]));
         }
         
-        // Apply gradient depending on depth
-        ctx.strokeStyle = `hsla(${260 + depth * 50}, 80%, ${60 - depth * 30}%, ${0.9 - depth * 0.6})`;
+        // Baseline points for fill
+        const leftBaseline = getProjectedPoint(0, r, 0);
+        const rightBaseline = getProjectedPoint(cols - 1, r, 0);
+        
+        // 1. Fill the polygon below the line to create solid 3D depth blocking
+        ctx.beginPath();
+        ctx.moveTo(leftBaseline.x, leftBaseline.y);
+        for (let c = 0; c < cols; c++) {
+          ctx.lineTo(points[c].x, points[c].y);
+        }
+        ctx.lineTo(rightBaseline.x, rightBaseline.y);
+        ctx.closePath();
+        ctx.fillStyle = canvasColor;
+        ctx.fill();
+        
+        // 2. Draw transverse wireframe line (row peaks)
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let c = 1; c < cols; c++) {
+          ctx.lineTo(points[c].x, points[c].y);
+        }
+        // Gradient color from deep purple to neon cyan/pink
+        ctx.strokeStyle = `hsla(${260 + depth * 50}, 85%, ${65 - depth * 25}%, ${0.8 - depth * 0.45})`;
+        ctx.lineWidth = 1.6 - depth * 0.7;
         ctx.stroke();
+        
+        // 3. Draw longitudinal wireframe lines (connecting back rows)
+        if (prevRowPoints) {
+          ctx.beginPath();
+          for (let c = 0; c < cols; c += 3) { // Draw every 3rd line for clean mesh density
+            ctx.moveTo(points[c].x, points[c].y);
+            ctx.lineTo(prevRowPoints[c].x, prevRowPoints[c].y);
+          }
+          ctx.strokeStyle = `hsla(${260 + depth * 50}, 75%, ${55 - depth * 20}%, ${0.35 - depth * 0.2})`;
+          ctx.lineWidth = 1.0 - depth * 0.5;
+          ctx.stroke();
+        }
+        
+        prevRowPoints = points;
       }
       
       // Draw rotating guide indicator
-      ctx.fillStyle = 'rgba(92, 92, 120, 0.4)';
+      ctx.fillStyle = 'var(--ink-muted)';
       ctx.font = '9px JetBrains Mono';
-      ctx.fillText(`3D Rot: X:${rotation.x.toFixed(1)} Y:${rotation.y.toFixed(1)}`, 10, canvas.height - 10);
+      ctx.fillText(`3D Rot: X:${rx.toFixed(2)} Y:${ry.toFixed(2)}`, 12, canvas.height - 12);
       
       animationId = requestAnimationFrame(render);
     };
     
     render();
     return () => cancelAnimationFrame(animationId);
-  }, [isPlaying, rotation]);
+  }, [isPlaying]);
 
   const togglePlay = () => {
     if (isPlaying) {
@@ -223,10 +286,10 @@ export default function AudioPlayer({ audioData, onFeedback }) {
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
     
-    setRotation(prev => ({
-      x: Math.max(-0.2, Math.min(1.2, prev.x + dy * 0.005)),
-      y: Math.max(-1.0, Math.min(1.0, prev.y + dx * 0.005))
-    }));
+    rotationRef.current = {
+      x: Math.max(0.2, Math.min(1.0, rotationRef.current.x + dy * 0.005)),
+      y: Math.max(-0.8, Math.min(0.8, rotationRef.current.y + dx * 0.005))
+    };
     
     dragStart.current = { x: e.clientX, y: e.clientY };
   };
@@ -626,6 +689,14 @@ export default function AudioPlayer({ audioData, onFeedback }) {
                   Title: {title} (Apollo Gen Original)<br />
                   Description: Composed with first-principles theory. Free of copyright matches. Tags: {audioData.promptUsed}
                 </div>
+                <a 
+                  href="https://youtube.com/upload" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-full mt-2 py-2 bg-[var(--accent)] hover:bg-[var(--accent-glow)] text-white text-[11px] font-bold rounded-lg transition-all text-center block cursor-pointer"
+                >
+                  Redirect to YouTube Upload ↗
+                </a>
               </div>
             )}
 
