@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import api from '../utils/api';
 
 export function useAudioGeneration(sessionId, compositionState = null) {
-  const [status, setStatus] = useState('idle'); // idle | generating | success | error
-  const [audioData, setAudioData] = useState(null);
+  const [localStatus, setLocalStatus] = useState('idle'); // idle | generating | success | error
+  const [localAudioData, setLocalAudioData] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Sync with persisted session audio if present
-  useEffect(() => {
-    if (compositionState?.audioUrl) {
-      setAudioData({
+  const hasServerAudio = !!compositionState?.audioUrl;
+
+  const status = hasServerAudio ? 'success' : localStatus;
+
+  const audioData = hasServerAudio
+    ? {
         audioUrl: compositionState.audioUrl,
         coverArtUrl: compositionState.coverArtUrl,
         duration: compositionState.duration,
@@ -17,29 +19,23 @@ export function useAudioGeneration(sessionId, compositionState = null) {
         promptUsed: compositionState.promptUsed,
         lyrics: compositionState.lyrics,
         validation: compositionState.validation
-      });
-      setStatus('success');
-    } else if (status === 'success' && !compositionState?.audioUrl) {
-      // Clear audio details if session composition was reset
-      setStatus('idle');
-      setAudioData(null);
-    }
-  }, [compositionState?.audioUrl]);
+      }
+    : localAudioData;
 
   const generateTrack = async () => {
     if (!sessionId) return;
     
-    setStatus('generating');
-    setAudioData(null);
+    setLocalStatus('generating');
+    setLocalAudioData(null);
     setErrorMsg('');
 
     try {
       const response = await api.post('/api/generate', { sessionId });
-      setAudioData(response.data);
-      setStatus('success');
+      setLocalAudioData(response.data);
+      setLocalStatus('success');
     } catch (error) {
       console.error("Audio generation error:", error);
-      setStatus('error');
+      setLocalStatus('error');
 
       const status = error.response?.status;
       let detail = error.response?.data?.detail;
@@ -63,8 +59,8 @@ export function useAudioGeneration(sessionId, compositionState = null) {
   };
 
   const reset = () => {
-    setStatus('idle');
-    setAudioData(null);
+    setLocalStatus('idle');
+    setLocalAudioData(null);
     setErrorMsg('');
   };
 

@@ -1,34 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import * as mm from '@magenta/music/es6';
+import { useState, useEffect, useRef } from 'react';
 import { Play, Square, Loader2, Volume2 } from 'lucide-react';
 
-export default function SoundPreview({ state }) {
+export default function SoundPreview() {
   const [player, setPlayer] = useState(null);
   const [model, setModel] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
+  const mmRef = useRef(null);
 
   useEffect(() => {
-    // Initialize player
-    const p = new mm.Player();
-    setPlayer(p);
+    let active = true;
+    let p = null;
 
-    // Initialize the MusicRNN model
-    const m = new mm.MusicRNN('https://storage.googleapis.com/magentadata/js/checkpoints/music_rnn/basic_rnn');
-    m.initialize().then(() => setModel(m));
+    const init = async () => {
+      const mm = await import('@magenta/music/es6');
+      if (!active) return;
+      mmRef.current = mm;
+
+      p = new mm.Player();
+
+      // Initialize the MusicRNN model
+      const m = new mm.MusicRNN('https://storage.googleapis.com/magentadata/js/checkpoints/music_rnn/basic_rnn');
+      
+      await m.initialize();
+      if (active) {
+        setPlayer(p);
+        setModel(m);
+      }
+    };
+    init();
 
     return () => {
+      active = false;
       if (p && p.isPlaying()) p.stop();
     };
   }, []);
 
   const generateAndPlay = async () => {
-    if (!model || !player) return;
+    if (!model || !player || !mmRef.current) return;
 
     setLoading(true);
     setIsPlaying(true);
 
     try {
+      const mm = mmRef.current;
       // Create a basic seed
       const STEPS_PER_QUARTER = 4;
       const seed = {

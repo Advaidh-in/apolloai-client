@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
 import { supabase } from '../utils/supabase';
 import { 
   Users, Music, MessageSquare, Activity, PlusCircle, Trash2, 
-  LogOut, ShieldAlert, Sparkles, Calendar, Play, Pause, AlertCircle, RefreshCw 
+  LogOut, Sparkles, Play, Pause, AlertCircle, RefreshCw 
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -21,9 +21,9 @@ export default function AdminDashboard() {
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
 
-  // Audio preview state
+  // Audio preview ref
   const [playingTrackId, setPlayingTrackId] = useState(null);
-  const [audioPreview, setAudioPreview] = useState(null);
+  const audioPreviewRef = useRef(null);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -45,10 +45,18 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    let active = true;
+    const init = async () => {
+      await Promise.resolve(); // avoid synchronous state updates
+      if (active) {
+        fetchDashboardData();
+      }
+    };
+    init();
     return () => {
-      if (audioPreview) {
-        audioPreview.pause();
+      active = false;
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
       }
     };
   }, []);
@@ -104,22 +112,24 @@ export default function AdminDashboard() {
 
   const togglePlayTrack = (trackId, audioUrl) => {
     if (playingTrackId === trackId) {
-      audioPreview.pause();
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+      }
       setPlayingTrackId(null);
     } else {
-      if (audioPreview) {
-        audioPreview.pause();
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
       }
       const newAudio = new Audio(audioUrl);
       newAudio.play();
       newAudio.onended = () => setPlayingTrackId(null);
-      setAudioPreview(newAudio);
+      audioPreviewRef.current = newAudio;
       setPlayingTrackId(trackId);
     }
   };
 
   const handleLogout = async () => {
-    if (audioPreview) audioPreview.pause();
+    if (audioPreviewRef.current) audioPreviewRef.current.pause();
     await supabase.auth.signOut();
   };
 
@@ -294,7 +304,7 @@ export default function AdminDashboard() {
                                 <td className="px-5 py-3.5 text-right">
                                   {track.id ? (
                                     <button
-                                      onClick={() => togglePlayTrack(track.id, `https://api.sunoapi.org/music/${track.id}.mp3` /* or actual url */ || track.audioUrl)}
+                                      onClick={() => togglePlayTrack(track.id, track.audioUrl || `https://api.sunoapi.org/music/${track.id}.mp3`)}
                                       className="p-2 rounded-full bg-[var(--accent-muted)] hover:bg-[var(--accent)] border border-[var(--accent)] text-[var(--accent-glow)] hover:text-[var(--ink)] transition-colors cursor-pointer"
                                     >
                                       {playingTrackId === track.id ? <Pause size={12} /> : <Play size={12} />}

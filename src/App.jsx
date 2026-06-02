@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from './utils/supabase';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
@@ -31,14 +31,14 @@ function ChatWorkspace({ onLogout }) {
     if (sessionData && sessionData.conversationHistory.length === 0 && !chatLoading) {
       sendMessage("Hello Apollo. I'd like to compose a track.");
     }
-  }, [sessionData, chatLoading]);
+  }, [sessionData, chatLoading, sendMessage]);
 
   // Auto-generate track at Step 12 (only if not already generated)
   useEffect(() => {
     if (sessionData?.step === 12 && audioStatus === 'idle' && !sessionData?.compositionState?.audioUrl) {
       generateTrack();
     }
-  }, [sessionData?.step, audioStatus, sessionData?.compositionState?.audioUrl]);
+  }, [sessionData?.step, audioStatus, sessionData?.compositionState?.audioUrl, generateTrack]);
 
   if (sessionLoading) {
     return (

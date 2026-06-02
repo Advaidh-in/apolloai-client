@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import MessageBubble from './MessageBubble';
 import ChoiceChips from './ChoiceChips';
 import InputBar from './InputBar';
@@ -19,7 +19,6 @@ export default function ChatWindow({
   onGenerateRetry 
 }) {
   const scrollContainerRef = useRef(null);
-  const [chipsInfoVisible, setChipsInfoVisible] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -38,12 +37,10 @@ export default function ChatWindow({
   
   const handleSend = (text) => {
     onSendMessage(text);
-    setChipsInfoVisible(false);
   };
 
   const handleChoice = (optionText) => {
     onSendMessage(optionText);
-    setChipsInfoVisible(false);
   };
 
   const extractChoices = (msg) => {
@@ -74,7 +71,6 @@ export default function ChatWindow({
       });
       window.dispatchEvent(event);
     }
-    setChipsInfoVisible(true);
   };
 
   return (

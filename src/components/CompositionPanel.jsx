@@ -1,7 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Music, Activity, Clock, Sliders, Star, Info, Edit2, Search, ArrowRight, HelpCircle, AlertTriangle, Key as KeyIcon, Volume2, Sparkles, User } from 'lucide-react';
 import SoundPreview from './SoundPreview';
 import api from '../utils/api';
+
+const InfoRow = ({ icon: Icon, label, value, stepLink, onStepJump }) => (
+  <div className="flex items-center gap-3 py-2.5 border-b border-[var(--hairline)] last:border-0 group">
+    <div className="p-1.5 bg-[var(--surface)] rounded-md text-[var(--accent)]">
+      <Icon size={12} />
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="text-[10px] text-[var(--ink-muted)] uppercase tracking-wider font-semibold">{label}</div>
+      <div className={`text-[13px] font-medium truncate capitalize ${value ? 'text-[var(--ink)]' : 'text-[var(--ink-muted)] italic'}`}>
+        {value || 'Pending...'}
+      </div>
+    </div>
+    {stepLink && (
+      <button 
+        onClick={() => onStepJump(stepLink)}
+        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[var(--surface-hover)] rounded text-[var(--ink-secondary)] hover:text-[var(--accent-glow)] transition-all cursor-pointer"
+        title={`Go back to Step ${stepLink}`}
+      >
+        <Edit2 size={12} />
+      </button>
+    )}
+  </div>
+);
 
 const THEORY_DATABASE = [
   {
@@ -143,17 +166,14 @@ const getDetailedExplanation = (conceptKey) => {
 };
 
 export default function CompositionPanel({ session, onGenerate, setSessionData }) {
-  if (!session) return null;
-
-  const { step, compositionState = {}, sessionId } = session;
-  const { mood, genre, subGenre, bpm, timeSignature, key: musicalKey, artist, dynamics, instruments = [], recommendationWarning } = compositionState;
-
   const [activeTab, setActiveTab] = useState('brief'); // 'brief' | 'artists' | 'theory'
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedConcept, setExpandedConcept] = useState(null);
   
   const [artists, setArtists] = useState([]);
   const [artistsLoading, setArtistsLoading] = useState(false);
+
+  const genre = session?.compositionState?.genre;
 
   useEffect(() => {
     const fetchArtists = async () => {
@@ -302,7 +322,7 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
       }
 
       // Generate query for dynamic LLM
-      let queryText = originalText;
+      let queryText;
       if (originalText.length < 50) {
         queryText = `Explain the music theory concept behind: ${originalText}`;
       } else {
@@ -323,6 +343,11 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
     window.addEventListener('open-theory-concept', handleOpenConcept);
     return () => window.removeEventListener('open-theory-concept', handleOpenConcept);
   }, []);
+
+  if (!session) return null;
+
+  const { step, compositionState = {}, sessionId } = session;
+  const { mood, subGenre, bpm, timeSignature, key: musicalKey, artist, dynamics, instruments = [], recommendationWarning } = compositionState;
 
   const handleStepJump = async (stepNum) => {
     try {
@@ -384,8 +409,8 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
         };
       }
 
-      let fallbackReply = "";
-      let fallbackLinks = [];
+      let fallbackReply;
+      let fallbackLinks;
 
       if (artistQuery) {
         fallbackReply = `Here is a guide on how to sound like **${artistQuery.name}**:\n\n${artistQuery.desc}`;
@@ -448,28 +473,6 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
     item.summary.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const InfoRow = ({ icon: Icon, label, value, stepLink }) => (
-    <div className="flex items-center gap-3 py-2.5 border-b border-[var(--hairline)] last:border-0 group">
-      <div className="p-1.5 bg-[var(--surface)] rounded-md text-[var(--accent)]">
-        <Icon size={12} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[10px] text-[var(--ink-muted)] uppercase tracking-wider font-semibold">{label}</div>
-        <div className={`text-[13px] font-medium truncate capitalize ${value ? 'text-[var(--ink)]' : 'text-[var(--ink-muted)] italic'}`}>
-          {value || 'Pending...'}
-        </div>
-      </div>
-      {stepLink && (
-        <button 
-          onClick={() => handleStepJump(stepLink)}
-          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[var(--surface-hover)] rounded text-[var(--ink-secondary)] hover:text-[var(--accent-glow)] transition-all cursor-pointer"
-          title={`Go back to Step ${stepLink}`}
-        >
-          <Edit2 size={12} />
-        </button>
-      )}
-    </div>
-  );
 
   return (
     <div className="h-full bg-transparent flex flex-col font-sans">
@@ -549,14 +552,14 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
 
             {/* Structured Info with Step Jumping */}
             <section className="bg-[var(--surface)] p-3.5 rounded-xl border border-[var(--hairline)] space-y-1">
-              <InfoRow icon={Activity} label="Mood" value={mood} stepLink={1} />
-              <InfoRow icon={KeyIcon} label="Key" value={musicalKey} stepLink={2} />
-              <InfoRow icon={Music} label="Genre" value={genre} stepLink={3} />
-              <InfoRow icon={Sliders} label="Sub-Genre" value={subGenre} stepLink={4} />
-              <InfoRow icon={User} label="Inspiration" value={artist} stepLink={8} />
-              <InfoRow icon={Clock} label="Tempo" value={bpm ? `${bpm} BPM` : null} stepLink={7} />
-              <InfoRow icon={HelpCircle} label="Signature" value={timeSignature} stepLink={6} />
-              <InfoRow icon={Volume2} label="Dynamics" value={dynamics} stepLink={10} />
+              <InfoRow icon={Activity} label="Mood" value={mood} stepLink={1} onStepJump={handleStepJump} />
+              <InfoRow icon={KeyIcon} label="Key" value={musicalKey} stepLink={2} onStepJump={handleStepJump} />
+              <InfoRow icon={Music} label="Genre" value={genre} stepLink={3} onStepJump={handleStepJump} />
+              <InfoRow icon={Sliders} label="Sub-Genre" value={subGenre} stepLink={4} onStepJump={handleStepJump} />
+              <InfoRow icon={User} label="Inspiration" value={artist} stepLink={8} onStepJump={handleStepJump} />
+              <InfoRow icon={Clock} label="Tempo" value={bpm ? `${bpm} BPM` : null} stepLink={7} onStepJump={handleStepJump} />
+              <InfoRow icon={HelpCircle} label="Signature" value={timeSignature} stepLink={6} onStepJump={handleStepJump} />
+              <InfoRow icon={Volume2} label="Dynamics" value={dynamics} stepLink={10} onStepJump={handleStepJump} />
             </section>
 
             {/* Instruments */}

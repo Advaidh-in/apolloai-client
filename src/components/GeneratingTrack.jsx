@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function GeneratingTrack() {
   return (
     <div className="flex w-full justify-start animate-message-in">

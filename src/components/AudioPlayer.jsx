@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Download, Shield, HelpCircle, FileText, CheckCircle2, ChevronDown, AlertTriangle } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Play, Pause, Download, Shield, HelpCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 export default function AudioPlayer({ audioData, onFeedback }) {
   const { audioUrl, coverArtUrl, duration, title, validation } = audioData;
@@ -17,10 +17,6 @@ export default function AudioPlayer({ audioData, onFeedback }) {
 
   const historyRows = 32;
   const cols = 40;
-
-  if (!historyDataRef.current) {
-    historyDataRef.current = Array(historyRows).fill(null).map(() => Array(cols).fill(0));
-  }
 
   // Plagiarism Scanner States
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -93,17 +89,18 @@ export default function AudioPlayer({ audioData, onFeedback }) {
   };
 
   useEffect(() => {
-    if (audioRef.current) {
-      const handleTimeUpdate = () => setCurrentTime(audioRef.current.currentTime);
+    const audioEl = audioRef.current;
+    if (audioEl) {
+      const handleTimeUpdate = () => setCurrentTime(audioEl.currentTime);
       const handleEnded = () => setIsPlaying(false);
       
-      audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
-      audioRef.current.addEventListener('ended', handleEnded);
+      audioEl.addEventListener('timeupdate', handleTimeUpdate);
+      audioEl.addEventListener('ended', handleEnded);
       
       return () => {
-        if (audioRef.current) {
-          audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
-          audioRef.current.removeEventListener('ended', handleEnded);
+        if (audioEl) {
+          audioEl.removeEventListener('timeupdate', handleTimeUpdate);
+          audioEl.removeEventListener('ended', handleEnded);
         }
       };
     }
@@ -116,6 +113,9 @@ export default function AudioPlayer({ audioData, onFeedback }) {
     const ctx = canvas.getContext('2d');
     let animationId;
     
+    if (!historyDataRef.current) {
+      historyDataRef.current = Array(historyRows).fill(null).map(() => Array(cols).fill(0));
+    }
     const historyData = historyDataRef.current;
     let frame = 0;
 
