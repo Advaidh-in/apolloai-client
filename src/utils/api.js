@@ -1,8 +1,19 @@
 import axios from 'axios';
 import { supabase } from './supabase';
 
+const getBaseURL = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // Auto-detect production environment and fallback to the Railway backend
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://apollo-ai-backend-production.up.railway.app';
+  }
+  return 'http://localhost:3001';
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+  baseURL: getBaseURL(),
 });
 
 // Add a request interceptor to inject the Supabase user's JWT token
