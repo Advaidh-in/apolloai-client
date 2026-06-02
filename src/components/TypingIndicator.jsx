@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function TypingIndicator() {
   return (
     <div className="flex justify-start mb-4 animate-message-in w-fit">

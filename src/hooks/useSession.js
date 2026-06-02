@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../utils/api';
 
 export function useSession() {
@@ -6,14 +6,20 @@ export function useSession() {
   const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function fetchOrCreateSession(forceNew = false) {
+  // Use a ref for sessionId to avoid callback recreation
+  const sessionIdRef = useRef(sessionId);
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  const fetchOrCreateSession = useCallback(async (forceNew = false) => {
     setLoading(true);
+    const currentSessionId = sessionIdRef.current;
     try {
-      if (sessionId && !forceNew) {
-        const res = await api.get(`/api/session/${sessionId}`);
+      if (currentSessionId && !forceNew) {
+        const res = await api.get(`/api/session/${currentSessionId}`);
         setSessionData(res.data.session);
       } else {
-        // Post to /api/session/new (optionally passing force=true to bypass existing active session)
         const url = forceNew ? '/api/session/new?force=true' : '/api/session/new';
         const res = await api.post(url);
         setSessionId(res.data.sessionId);
@@ -33,18 +39,27 @@ export function useSession() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    // Only init if the user is authenticated (which is managed at App.jsx level)
-    fetchOrCreateSession();
-  }, [sessionId]);
+    let active = true;
+    const init = async () => {
+      await Promise.resolve(); // avoid synchronous state updates
+      if (active) {
+        fetchOrCreateSession();
+      }
+    };
+    init();
+    return () => {
+      active = false;
+    };
+  }, [fetchOrCreateSession]);
 
-  const resetSession = async () => {
+  const resetSession = useCallback(async () => {
     localStorage.removeItem('apolloSessionId');
     setSessionId(null);
     await fetchOrCreateSession(true);
-  };
+  }, [fetchOrCreateSession]);
 
   return { sessionId, sessionData, setSessionData, loading, resetSession };
 }

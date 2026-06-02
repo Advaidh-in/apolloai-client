@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../utils/supabase';
 import api from '../utils/api';
 import { Sparkles, Mail, Lock, AlertCircle, Loader } from 'lucide-react';
@@ -20,7 +20,7 @@ export default function Login() {
     setErrorMsg('');
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });

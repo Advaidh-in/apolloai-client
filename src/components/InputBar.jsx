@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ArrowUp, ChevronLeft } from 'lucide-react';
 
 export default function InputBar({ onSend, onBack, onSkip, disabled }) {
