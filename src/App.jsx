@@ -239,6 +239,38 @@ function App() {
     await supabase.auth.signOut();
   };
 
+  // Auto logout after 1.5 hours of inactivity
+  useEffect(() => {
+    if (!session) return;
+
+    const TIMEOUT_MS = 1.5 * 60 * 60 * 1000; // 1.5 hours
+    let timeoutId;
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.log("Inactivity timeout reached (1.5 hours). Logging out...");
+        handleLogout();
+      }, TIMEOUT_MS);
+    };
+
+    // Track user interactions to reset the timer
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    // Initialize timer
+    resetTimer();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach(event => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [session]);
+
   if (authLoading || (session && profileLoading)) {
     return (
       <div className="min-h-screen bg-[var(--canvas)] flex items-center justify-center text-[var(--ink-secondary)] flex-col gap-4 font-sans">
