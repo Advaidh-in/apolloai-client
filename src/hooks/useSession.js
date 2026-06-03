@@ -5,6 +5,7 @@ export function useSession() {
   const [sessionId, setSessionId] = useState(localStorage.getItem('apolloSessionId'));
   const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Use a ref for sessionId to avoid callback recreation
   const sessionIdRef = useRef(sessionId);
@@ -14,6 +15,7 @@ export function useSession() {
 
   const fetchOrCreateSession = useCallback(async (forceNew = false) => {
     setLoading(true);
+    setError(null);
     const currentSessionId = sessionIdRef.current;
     try {
       if (currentSessionId && !forceNew) {
@@ -35,6 +37,7 @@ export function useSession() {
         localStorage.setItem('apolloSessionId', res.data.sessionId);
       } catch (innerErr) {
         console.error("Failed to initialize fresh session:", innerErr);
+        setError(innerErr);
       }
     } finally {
       setLoading(false);
@@ -61,5 +64,6 @@ export function useSession() {
     await fetchOrCreateSession(true);
   }, [fetchOrCreateSession]);
 
-  return { sessionId, sessionData, setSessionData, loading, resetSession };
+  return { sessionId, sessionData, setSessionData, loading, resetSession, error };
 }
+
