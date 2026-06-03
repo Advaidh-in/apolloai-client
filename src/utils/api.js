@@ -2,14 +2,22 @@ import axios from 'axios';
 import { supabase } from './supabase';
 
 const getBaseURL = () => {
+  let url = '';
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+    url = import.meta.env.VITE_API_URL.trim();
+  } else if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    url = 'https://apollo-ai-backend-production.up.railway.app';
+  } else {
+    url = 'http://localhost:3001';
   }
-  // Auto-detect production environment and fallback to the Railway backend
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://apollo-ai-backend-production.up.railway.app';
+
+  // Prepend https:// if protocol is missing but it is a domain (contains dot)
+  if (url && !/^https?:\/\//i.test(url)) {
+    if (url.includes('.')) {
+      url = `https://${url}`;
+    }
   }
-  return 'http://localhost:3001';
+  return url;
 };
 
 const api = axios.create({

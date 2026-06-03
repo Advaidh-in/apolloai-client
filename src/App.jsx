@@ -7,12 +7,13 @@ import CompositionPanel from './components/CompositionPanel';
 import { useSession } from './hooks/useSession';
 import { useChat } from './hooks/useChat';
 import { useAudioGeneration } from './hooks/useAudioGeneration';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, WifiOff, AlertCircle, RefreshCw, Server, Terminal } from 'lucide-react';
 import api from './utils/api';
+
 
 // ChatWorkspace encapsulates the actual chatbot UI and hooks to avoid 401s on mount
 function ChatWorkspace({ onLogout }) {
-  const { sessionId, sessionData, setSessionData, loading: sessionLoading, resetSession } = useSession();
+  const { sessionId, sessionData, setSessionData, loading: sessionLoading, resetSession, error: sessionError } = useSession();
   const { sendMessage, loading: chatLoading } = useChat(sessionId, setSessionData);
   const { generateTrack, status: audioStatus, audioData, errorMsg: audioError, reset: resetAudio } = useAudioGeneration(sessionId, sessionData?.compositionState);
 
@@ -95,16 +96,86 @@ function ChatWorkspace({ onLogout }) {
         </header>
         
         <div className="flex-1 flex flex-col overflow-hidden relative bg-[var(--canvas)]">
-          <ChatWindow 
-            sessionData={sessionData} 
-            onSendMessage={sendMessage} 
-            onBack={handleBack}
-            loading={chatLoading} 
-            audioStatus={audioStatus}
-            audioData={audioData}
-            audioError={audioError}
-            onGenerateRetry={generateTrack}
-          />
+          {sessionError ? (
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex items-center justify-center">
+              <div className="max-w-[640px] w-full mx-auto glass-panel rounded-2xl p-8 border border-[var(--error)]/30 shadow-[0_12px_40px_rgba(239,68,68,0.05)] relative z-10 animate-message-in">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="bg-red-950/20 p-3.5 rounded-xl border border-[var(--error)]/40 text-[var(--error)] shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+                    <WifiOff size={28} />
+                  </div>
+                  <div>
+                    <h2 className="text-[22px] font-bold text-[var(--ink)] font-['Space_Grotesk'] tracking-tight">
+                      Connection Advisory
+                    </h2>
+                    <p className="text-[13px] text-[var(--ink-secondary)] mt-1">
+                      Apollo was unable to connect to the backend orchestration service.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-[var(--canvas)] p-4 rounded-xl border border-[var(--hairline)] mb-6 space-y-3 font-mono text-[12px]">
+                  <div className="flex items-center gap-2 text-[var(--ink-secondary)]">
+                    <Server size={14} className="text-[var(--accent-glow)]" />
+                    <span className="font-semibold">Target API URL:</span>
+                    <span className="text-[var(--ink)] break-all">{api.defaults.baseURL}</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-[var(--error)]">
+                    <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                    <span className="font-semibold shrink-0">Details:</span>
+                    <span className="break-all">{sessionError?.message || String(sessionError)}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4 text-[13px] text-[var(--ink-secondary)] mb-8">
+                  <div className="flex gap-2">
+                    <span className="bg-[var(--surface)] text-[var(--accent-glow)] font-bold font-mono px-2 py-0.5 rounded text-[11px] shrink-0 h-fit mt-0.5">1</span>
+                    <p>
+                      <strong>Set Environment Variable:</strong> In your Vercel deployment settings, verify that <code>VITE_API_URL</code> is set to your deployed backend URL (e.g. <code>https://your-backend.onrender.com</code> or <code>https://your-backend.up.railway.app</code>) and redeploy the application.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="bg-[var(--surface)] text-[var(--accent-glow)] font-bold font-mono px-2 py-0.5 rounded text-[11px] shrink-0 h-fit mt-0.5">2</span>
+                    <p>
+                      <strong>Verify Backend Status:</strong> Ensure your backend container has deployed successfully and is active. Render free-tier instances automatically spin down due to inactivity and may take up to a minute to start.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="bg-[var(--surface)] text-[var(--accent-glow)] font-bold font-mono px-2 py-0.5 rounded text-[11px] shrink-0 h-fit mt-0.5">3</span>
+                    <p>
+                      <strong>Local Development:</strong> If you are testing locally, make sure you ran <code>python main.py</code> inside the <code>server/</code> folder and that the server is listening on port <code>3001</code>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 border-t border-[var(--hairline)] pt-5">
+                  <button 
+                    onClick={() => resetSession()}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-glow)] text-[var(--ink)] font-semibold rounded-lg text-[13.5px] cursor-pointer transition-all active:scale-95 shadow-[0_4px_12px_rgba(124,58,237,0.3)] hover:shadow-[0_0_24px_rgba(159,103,255,0.5)] accent-glow-button"
+                  >
+                    <RefreshCw size={14} className="animate-spin-slow" />
+                    <span>Retry Connection</span>
+                  </button>
+                  <button 
+                    onClick={onLogout}
+                    className="px-4 py-2.5 bg-transparent hover:bg-[var(--surface)] border border-[var(--hairline)] text-[var(--ink-secondary)] hover:text-[var(--ink)] rounded-lg text-[13px] transition-all cursor-pointer"
+                  >
+                    Log Out
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <ChatWindow 
+              sessionData={sessionData} 
+              onSendMessage={sendMessage} 
+              onBack={handleBack}
+              loading={chatLoading} 
+              audioStatus={audioStatus}
+              audioData={audioData}
+              audioError={audioError}
+              onGenerateRetry={generateTrack}
+            />
+          )}
         </div>
       </div>
     </div>
