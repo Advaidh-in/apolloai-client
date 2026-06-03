@@ -236,8 +236,6 @@ function App() {
   }, []);
 
   const handleLogout = async () => {
-    // Clear localStorage to prevent conflicts on next session login
-    localStorage.removeItem('apolloSessionId');
     await supabase.auth.signOut();
   };
 
