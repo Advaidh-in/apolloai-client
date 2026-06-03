@@ -3,7 +3,8 @@ import api from '../utils/api';
 import { supabase } from '../utils/supabase';
 import { 
   Users, Music, MessageSquare, Activity, PlusCircle, Trash2, 
-  LogOut, Sparkles, Play, Pause, AlertCircle, RefreshCw 
+  LogOut, Sparkles, Play, Pause, AlertCircle, RefreshCw,
+  Lock, Unlock
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -107,6 +108,23 @@ export default function AdminDashboard() {
       fetchDashboardData();
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to delete user.');
+    }
+  };
+
+  const handleToggleBlockUser = async (userId, email, isBlocked) => {
+    const actionText = isBlocked ? 'unblock' : 'block';
+    if (!confirm(`Are you sure you want to ${actionText} user ${email}?`)) {
+      return;
+    }
+    
+    try {
+      await api.post('/api/admin/users/block', {
+        userId,
+        block: !isBlocked
+      });
+      fetchDashboardData();
+    } catch (err) {
+      alert(err.response?.data?.detail || `Failed to ${actionText} user.`);
     }
   };
 
@@ -405,8 +423,9 @@ export default function AdminDashboard() {
                           <tr className="bg-[var(--surface)] border-b border-[var(--hairline)] text-[var(--ink-secondary)] font-semibold uppercase text-[10px] tracking-wider">
                             <th className="px-5 py-3">Email</th>
                             <th className="px-5 py-3">Role</th>
+                            <th className="px-5 py-3">Status</th>
                             <th className="px-5 py-3">Registered Date</th>
-                            <th className="px-5 py-3 text-right">Delete Account</th>
+                            <th className="px-5 py-3 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--hairline)]">
@@ -422,17 +441,39 @@ export default function AdminDashboard() {
                                   {u.role}
                                 </span>
                               </td>
+                              <td className="px-5 py-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${
+                                  u.is_blocked 
+                                    ? 'bg-red-950/40 text-[var(--error)] border border-[var(--error)]/30' 
+                                    : 'bg-green-950/40 text-[var(--success)] border border-[var(--success)]/30'
+                                }`}>
+                                  {u.is_blocked ? 'Blocked' : 'Active'}
+                                </span>
+                              </td>
                               <td className="px-5 py-3 font-mono text-[11px] text-[var(--ink-secondary)]">
                                 {new Date(u.created_at).toLocaleString()}
                               </td>
                               <td className="px-5 py-3 text-right">
-                                <button
-                                  onClick={() => handleDeleteUser(u.id, u.email)}
-                                  className="p-1.5 rounded bg-transparent border border-transparent hover:border-[var(--error)] text-[var(--ink-secondary)] hover:text-[var(--error)] transition-all cursor-pointer"
-                                  title="Delete User Account"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => handleToggleBlockUser(u.id, u.email, u.is_blocked)}
+                                    className={`p-1.5 rounded bg-transparent border border-transparent transition-all cursor-pointer ${
+                                      u.is_blocked 
+                                        ? 'hover:border-[var(--success)] text-[var(--ink-secondary)] hover:text-[var(--success)]' 
+                                        : 'hover:border-[var(--error)] text-[var(--ink-secondary)] hover:text-[var(--error)]'
+                                    }`}
+                                    title={u.is_blocked ? "Unblock Client Account" : "Temporarily Block Client Account"}
+                                  >
+                                    {u.is_blocked ? <Unlock size={14} /> : <Lock size={14} />}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(u.id, u.email)}
+                                    className="p-1.5 rounded bg-transparent border border-transparent hover:border-[var(--error)] text-[var(--ink-secondary)] hover:text-[var(--error)] transition-all cursor-pointer"
+                                    title="Delete User Account"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
