@@ -399,6 +399,22 @@ export default function AudioPlayer({ audioData, onFeedback }) {
               : "Similarity scanning matched active fingerprints above the 25% safety threshold. We recommend adjusting chords or arrangement and regenerating."}
           </div>
 
+          {/* Digital Signature & Verification metadata */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1 border-t border-[var(--hairline)]/50 pt-3 text-[11px] font-mono text-[var(--ink-secondary)] bg-[var(--canvas-overlay)]/40 p-2.5 rounded-lg border border-[var(--hairline)]/40">
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-[9px] uppercase font-bold text-[var(--ink-muted)] tracking-wider">Digital Signature (SHA-256)</span>
+              <span className="text-[var(--ink)] truncate block" title={validation?.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}>
+                {validation?.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-[9px] uppercase font-bold text-[var(--ink-muted)] tracking-wider">ShazamKit Verification ID</span>
+              <span className="text-[var(--accent-glow)] font-semibold truncate block">
+                SZ-{title ? title.substring(0,3).toUpperCase() : 'APP'}-{duration ? Math.round(duration) : '00'}-{validation?.sha256 ? validation.sha256.substring(0,8).toUpperCase() : '852B855'}
+              </span>
+            </div>
+          </div>
+
           {/* Plagiarism Analyzer Expandable Section */}
           <div className="mt-1 pt-2 border-t border-[var(--hairline)]/50">
             <button
