@@ -7,7 +7,7 @@ import CompositionPanel from './components/CompositionPanel';
 import { useSession } from './hooks/useSession';
 import { useChat } from './hooks/useChat';
 import { useAudioGeneration } from './hooks/useAudioGeneration';
-import { Sparkles, WifiOff, AlertCircle, RefreshCw, Server, Terminal } from 'lucide-react';
+import { Sparkles, WifiOff, AlertCircle, RefreshCw, Server, Terminal, Lock } from 'lucide-react';
 import api from './utils/api';
 
 
@@ -285,7 +285,35 @@ function App() {
     return <Login />;
   }
 
-  // 2. Authenticated -> check role
+  // 2. Temporarily Blocked User Screen
+  if (profile?.is_blocked) {
+    return (
+      <div className="min-h-screen w-full bg-[var(--canvas)] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+        {/* Ambient Glow Nebulae */}
+        <div className="absolute top-[-25%] left-[-20%] w-[65%] h-[65%] rounded-full bg-[radial-gradient(circle,rgba(239,68,68,0.08)_0%,transparent_75%)] blur-[85px] pointer-events-none animate-float-blob" />
+        
+        <div className="w-full max-w-[440px] glass-panel rounded-[16px] p-8 shadow-[0_12px_40px_rgba(0,0,0,0.65)] relative z-10 animate-message-in text-center border border-[var(--error)]/20">
+          <div className="bg-red-950/20 w-16 h-16 rounded-full flex items-center justify-center shadow-[0_0_24px_rgba(239,68,68,0.2)] border border-[var(--error)]/30 mx-auto mb-6 text-[var(--error)] animate-pulse">
+            <Lock size={32} />
+          </div>
+          <h1 className="text-[24px] font-bold tracking-tight text-[var(--ink)] font-['Space_Grotesk'] mb-3">
+            Access Suspended
+          </h1>
+          <p className="text-[13.5px] text-[var(--ink-secondary)] leading-relaxed mb-6 font-sans">
+            Your account has been temporarily blocked by the administrator. Please contact support or your account administrator to restore access.
+          </p>
+          <button
+            onClick={handleLogout}
+            className="w-full bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--hairline)] hover:border-[var(--error)] text-[var(--ink)] hover:text-[var(--error)] font-semibold rounded-[10px] py-3 text-[14px] cursor-pointer transition-all active:scale-95"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Authenticated -> check role
   if (profile?.role === 'superadmin') {
     return <AdminDashboard />;
   }
