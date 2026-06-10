@@ -48,18 +48,23 @@ export default function ChatWindow({
     const lines = msg.content.split('\n');
     return lines
       .filter(l => l.trim().startsWith('-') || l.trim().startsWith('*'))
-      .map(l => l.replace(/^[-*]\s*/, '').trim());
+      .map(l => l.replace(/^[-*]\s*/, '').trim())
+      .filter(l => l.length > 0);
   };
 
   const lastMsg = history[history.length - 1];
-  const choices = extractChoices(lastMsg);
+  const parsedChoices = extractChoices(lastMsg);
 
-  // Always ensure 4/4 is present in time signature step
-  if (sessionData?.step === 7) {
-    if (choices.length > 0 && !choices.includes("4/4")) {
-      choices.unshift("4/4");
-    }
-  }
+  // Fallback chips: when the AI asks a question with no bullet options,
+  // show generic proceed/query chips so users are never stuck.
+  const isAssistantTurn = lastMsg?.role === 'assistant';
+  const hasQuestion = isAssistantTurn && lastMsg?.content?.includes('?');
+  const fallbackChoices = (parsedChoices.length === 0 && hasQuestion && !loading && audioStatus !== 'generating' && audioStatus !== 'success')
+    ? ['Yes, proceed', 'Tell me more', 'Ask about other options']
+    : [];
+
+  const choices = parsedChoices.length > 0 ? parsedChoices : fallbackChoices;
+  const isFallback = parsedChoices.length === 0 && fallbackChoices.length > 0;
 
   // Open theory helper sidebar for the chips context
   const handleChipsInfo = (e) => {
@@ -79,7 +84,7 @@ export default function ChatWindow({
       
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-6 custom-scrollbar min-h-0"
+        className="flex-1 overflow-y-auto p-3 md:p-6 custom-scrollbar min-h-0"
       >
         <div className="max-w-[720px] w-full mx-auto space-y-4 flex flex-col">
           {history.length === 0 && (
@@ -133,19 +138,23 @@ export default function ChatWindow({
           )}
           
           {/* Choice Chips with ⓘ theory context header */}
-          {!loading && audioStatus !== 'generating' && choices.length > 0 && lastMsg?.role === 'assistant' && (
-            <div className="ml-[40px]">
+          {!loading && audioStatus !== 'generating' && audioStatus !== 'success' && choices.length > 0 && lastMsg?.role === 'assistant' && (
+            <div className="ml-0 sm:ml-[40px]">
               {/* Chips context row */}
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[11px] text-[var(--ink-muted)] font-medium">Choose an option or type your own</span>
-                <button
-                  onClick={handleChipsInfo}
-                  className="flex items-center gap-1 px-[8px] py-[3px] rounded-full border border-[var(--hairline)] bg-[var(--surface)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent-glow)] hover:bg-[var(--canvas-elevated)] transition-all text-[11px] cursor-pointer"
-                  title="Learn about this music concept"
-                >
-                  <Info size={11} />
-                  <span>What does this mean?</span>
-                </button>
+                <span className="text-[11px] text-[var(--ink-muted)] font-medium">
+                  {isFallback ? 'Quick replies — or type your own response' : 'Choose an option or type your own'}
+                </span>
+                {!isFallback && (
+                  <button
+                    onClick={handleChipsInfo}
+                    className="flex items-center gap-1 px-[8px] py-[3px] rounded-full border border-[var(--hairline)] bg-[var(--surface)] text-[var(--ink-muted)] hover:border-[var(--accent)] hover:text-[var(--accent-glow)] hover:bg-[var(--canvas-elevated)] transition-all text-[11px] cursor-pointer"
+                    title="Learn about this music concept"
+                  >
+                    <Info size={11} />
+                    <span>What does this mean?</span>
+                  </button>
+                )}
               </div>
 
               <ChoiceChips options={choices} onSelect={handleChoice} />
@@ -159,7 +168,7 @@ export default function ChatWindow({
       <InputBar 
         onSend={handleSend} 
         onBack={sessionData?.step > 1 ? onBack : null}
-        onSkip={choices.length > 0 ? () => handleChoice(choices[0]) : null}
+        onSkip={choices.length > 0 && audioStatus !== 'success' ? () => handleChoice(choices[0]) : null}
         disabled={loading || audioStatus === 'generating'} 
       />
     </div>

@@ -11,7 +11,7 @@ export default function ChoiceChips({ options, onSelect }) {
   };
 
   return (
-    <div className="flex flex-wrap gap-2 mt-2 mb-6 ml-[40px]">
+    <div className="flex flex-wrap gap-2 mt-2 mb-6">
       {options.map((option, idx) => {
         const isSelected = selectedIdx === idx;
         const isDisabled = selectedIdx !== null;

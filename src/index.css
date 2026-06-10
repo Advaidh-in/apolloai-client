@@ -132,12 +132,15 @@ input[type="range"].audio-scrubber::-moz-range-progress {
 
 /* Custom elegant scrollbar for studio theme (hidden by default, shows on hover) */
 .custom-scrollbar {
-  scrollbar-width: none; /* Hide in Firefox by default */
+  scrollbar-width: thin; /* Always thin to reserve space in Firefox */
+  scrollbar-color: transparent transparent; /* Invisible by default */
+  scrollbar-gutter: stable; /* Reserves gutter space to prevent layout shifts when scrollbar reveals */
+  transition: scrollbar-color 250ms ease;
 }
 
 .custom-scrollbar:hover {
-  scrollbar-width: thin; /* Show in Firefox on hover */
-  scrollbar-color: var(--surface) transparent;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface) transparent; /* Revealed on hover */
 }
 
 .custom-scrollbar::-webkit-scrollbar {

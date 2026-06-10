@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from './utils/supabase';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
@@ -7,21 +7,24 @@ import CompositionPanel from './components/CompositionPanel';
 import { useSession } from './hooks/useSession';
 import { useChat } from './hooks/useChat';
 import { useAudioGeneration } from './hooks/useAudioGeneration';
-import { Sparkles, WifiOff, AlertCircle, RefreshCw, Server, Terminal, Lock } from 'lucide-react';
+import { Sparkles, WifiOff, AlertCircle, RefreshCw, Server, Terminal, Lock, PanelLeft, MessageSquare, X } from 'lucide-react';
 import api from './utils/api';
-
 
 // ChatWorkspace encapsulates the actual chatbot UI and hooks to avoid 401s on mount
 function ChatWorkspace({ onLogout }) {
   const { sessionId, sessionData, setSessionData, loading: sessionLoading, resetSession, error: sessionError } = useSession();
   const { sendMessage, loading: chatLoading } = useChat(sessionId, setSessionData);
   const { generateTrack, status: audioStatus, audioData, errorMsg: audioError, reset: resetAudio } = useAudioGeneration(sessionId, sessionData?.compositionState);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   const handleBack = async () => {
     if (!sessionData || sessionData.step <= 1) return;
     try {
       const res = await api.post('/api/session/back', { sessionId });
       setSessionData(res.data.session);
+      if (sessionData.step === 12) {
+        resetAudio();
+      }
     } catch (err) {
       console.error("Failed to go back:", err);
     }
@@ -56,7 +59,7 @@ function ChatWorkspace({ onLogout }) {
       <div className="absolute top-[-25%] left-[-15%] w-[60%] h-[60%] rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.12)_0%,transparent_75%)] blur-[80px] pointer-events-none animate-float-blob z-0" />
       <div className="absolute bottom-[-25%] right-[-15%] w-[60%] h-[60%] rounded-full bg-[radial-gradient(circle,rgba(6,182,212,0.08)_0%,transparent_75%)] blur-[80px] pointer-events-none animate-float-blob [animation-delay:-12s] z-0" />
 
-      {/* Sidebar Panel */}
+      {/* Sidebar Panel — desktop only */}
       <div className="w-[320px] shrink-0 hidden md:flex flex-col glass-panel border-r border-[var(--hairline)] h-full overflow-hidden z-10 relative">
         <CompositionPanel 
           session={sessionData} 
@@ -65,32 +68,64 @@ function ChatWorkspace({ onLogout }) {
         />
       </div>
 
+      {/* Mobile Panel Drawer */}
+      {mobilePanelOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex flex-col">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobilePanelOpen(false)} />
+          <div className="relative mt-auto h-[85dvh] w-full glass-panel border-t border-[var(--hairline)] rounded-t-2xl overflow-hidden flex flex-col animate-message-in">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--hairline)] shrink-0">
+              <span className="text-[13px] font-semibold text-[var(--ink)]">Composition Brief</span>
+              <button onClick={() => setMobilePanelOpen(false)} className="text-[var(--ink-secondary)] hover:text-[var(--ink)] p-1 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <CompositionPanel 
+                session={sessionData} 
+                onGenerate={generateTrack} 
+                setSessionData={setSessionData}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full z-10 relative bg-[var(--canvas)]">
-        <header className="h-[72px] shrink-0 flex items-center justify-between px-6 border-b border-[var(--hairline)] glass-panel z-20 relative">
-          <div className="flex items-center gap-3">
-            <div className="bg-[var(--accent)] w-8 h-8 rounded-full flex items-center justify-center shadow-[0_0_20px_var(--accent-muted)]">
-              <Sparkles size={16} className="text-[var(--ink)]" />
+        <header className="h-[60px] md:h-[72px] shrink-0 flex items-center justify-between px-3 md:px-6 border-b border-[var(--hairline)] glass-panel z-20 relative">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Mobile: panel toggle */}
+            <button
+              onClick={() => setMobilePanelOpen(true)}
+              className="md:hidden p-2 rounded-lg bg-[var(--surface)] border border-[var(--hairline)] text-[var(--ink-secondary)] hover:text-[var(--accent-glow)] hover:border-[var(--accent)] transition-all cursor-pointer"
+              title="View composition brief"
+            >
+              <PanelLeft size={16} />
+            </button>
+            <div className="bg-[var(--accent)] w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shadow-[0_0_20px_var(--accent-muted)]">
+              <Sparkles size={14} className="text-[var(--ink)]" />
             </div>
-            <h1 className="text-[20px] font-bold tracking-tight text-[var(--ink)] font-['Space_Grotesk']">
+            <h1 className="text-[16px] md:text-[20px] font-bold tracking-tight text-[var(--ink)] font-['Space_Grotesk']">
               Apollo<span className="text-[var(--accent-glow)]">.Ai</span>
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <button 
               onClick={() => {
                 resetSession();
                 resetAudio();
               }}
-              className="text-[13px] font-medium text-[var(--ink-secondary)] hover:text-[var(--ink)] transition-colors cursor-pointer"
+              className="text-[12px] md:text-[13px] font-medium text-[var(--ink-secondary)] hover:text-[var(--ink)] transition-colors cursor-pointer"
             >
-              Start Over
+              <span className="hidden sm:inline">Start Over</span>
+              <span className="sm:hidden">Reset</span>
             </button>
             <button 
               onClick={onLogout}
-              className="text-[13px] font-medium text-[var(--ink-secondary)] hover:text-[var(--error)] transition-colors cursor-pointer"
+              className="text-[12px] md:text-[13px] font-medium text-[var(--ink-secondary)] hover:text-[var(--error)] transition-colors cursor-pointer"
             >
-              Log Out
+              <span className="hidden sm:inline">Log Out</span>
+              <span className="sm:hidden">Exit</span>
             </button>
           </div>
         </header>
@@ -188,8 +223,17 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  const fetchProfile = async (userId) => {
-    setProfileLoading(true);
+  const profileRef = useRef(profile);
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
+
+  const fetchProfile = useCallback(async (userId) => {
+    const currentProfile = profileRef.current;
+    const needsLoadingState = !currentProfile || currentProfile.id !== userId;
+    if (needsLoadingState) {
+      setProfileLoading(true);
+    }
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -202,9 +246,11 @@ function App() {
     } catch (err) {
       console.error("Error fetching user profile:", err);
     } finally {
-      setProfileLoading(false);
+      if (needsLoadingState) {
+        setProfileLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     // Check current auth status on mount
@@ -233,7 +279,7 @@ function App() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchProfile]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
