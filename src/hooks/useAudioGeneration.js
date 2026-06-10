@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../utils/api';
 
 export function useAudioGeneration(sessionId, compositionState = null) {
@@ -18,13 +18,25 @@ export function useAudioGeneration(sessionId, compositionState = null) {
         title: compositionState.trackTitle || compositionState.title,
         promptUsed: compositionState.promptUsed,
         lyrics: compositionState.lyrics,
-        validation: compositionState.validation
+        validation: compositionState.validation,
+        certificateUrl: compositionState.certificateUrl,
+        plagiarismReportUrl: compositionState.plagiarismReportUrl,
+        trackId: compositionState.trackId
       }
     : localAudioData;
 
-  const generateTrack = async () => {
+  useEffect(() => {
+    if (!compositionState?.audioUrl && localStatus === 'success') {
+      reset();
+    }
+  }, [compositionState?.audioUrl, localStatus]);
+
+  // Wrapped in useCallback so the function reference is stable across renders.
+  // Without this, generateTrack is recreated every render, causing the useEffect
+  // in App.jsx (which lists it as a dependency) to re-fire — making duplicate API calls.
+  const generateTrack = useCallback(async () => {
     if (!sessionId) return;
-    
+
     setLocalStatus('generating');
     setLocalAudioData(null);
     setErrorMsg('');
@@ -37,32 +49,33 @@ export function useAudioGeneration(sessionId, compositionState = null) {
       console.error("Audio generation error:", error);
       setLocalStatus('error');
 
-      const status = error.response?.status;
+      const httpStatus = error.response?.status;
       let detail = error.response?.data?.detail;
 
       if (typeof detail === 'string') {
-        detail = detail.replace(/suno\s*api\s*error:\s*/gi, "Audio Engine Error: ");
-        detail = detail.replace(/suno/gi, "Audio Engine");
+        detail = detail.replace(/(suno|udio|replicate)\s*api\s*error:\s*/gi, "Audio Engine Error: ");
+        detail = detail.replace(/(suno|udio|replicate)/gi, "Audio Engine");
       }
 
-      if (status === 422 && detail?.includes("Session not found")) {
-        // Session was wiped (server restart). Prompt a page refresh.
+      if (httpStatus === 422 && detail?.includes("Session not found")) {
         setErrorMsg("Your session expired — please refresh the page to start a new one.");
-      } else if (status === 400) {
+      } else if (httpStatus === 400) {
         setErrorMsg("Not enough info yet. Keep answering Apollo's questions first!");
-      } else if (status === 504 || error.code === 'ECONNABORTED') {
+      } else if (httpStatus === 504 || error.code === 'ECONNABORTED') {
         setErrorMsg("The music generator is taking too long. Please try generating again.");
+      } else if (httpStatus === 500 || detail?.includes("Generation failed") || detail?.includes("credits") || detail?.includes("insufficient")) {
+        setErrorMsg("We are experiencing high generation demand. Please try again in a few moments.");
       } else {
         setErrorMsg(detail || "Failed to generate track. Please try again.");
       }
     }
-  };
+  }, [sessionId]);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setLocalStatus('idle');
     setLocalAudioData(null);
     setErrorMsg('');
-  };
+  }, []);
 
   return { generateTrack, status, audioData, errorMsg, reset };
 }

@@ -287,6 +287,62 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
+                  {/* Apollo Audio Engine Telemetry */}
+                  <div className="space-y-4 pt-4 border-t border-[var(--hairline)]">
+                    <h3 className="text-[16px] font-semibold text-[var(--ink)] flex items-center gap-2">
+                      <Activity size={16} className="text-[var(--accent)]" />
+                      <span>Apollo Audio Engine Telemetry</span>
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {/* Apollo Synthesis Engine Status Card */}
+                      <div className="bg-[var(--canvas-elevated)] border border-[var(--hairline)] rounded-[12px] p-4 flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-[13px]">Apollo Synthesis Engine</span>
+                          <span className={`px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold border ${
+                            analytics?.providerStatus?.suno?.status === 'healthy' 
+                              ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/20'
+                              : analytics?.providerStatus?.suno?.status === 'degraded'
+                              ? 'bg-yellow-950/40 text-yellow-400 border-yellow-500/20'
+                              : 'bg-zinc-850 text-zinc-500 border-zinc-700'
+                          }`}>
+                            {analytics?.providerStatus?.suno?.status === 'healthy' ? 'ACTIVE' : (analytics?.providerStatus?.suno?.status || 'UNKNOWN')}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-[var(--ink-secondary)] flex justify-between">
+                          <span>Synthesis Latency:</span>
+                          <span className="font-mono">{analytics?.providerStatus?.suno?.latency_ms ? `${analytics.providerStatus.suno.latency_ms}ms` : 'N/A'}</span>
+                        </div>
+                        <div className="text-[10px] text-[var(--ink-muted)] font-mono">
+                          Checked: {analytics?.providerStatus?.suno?.checked_at ? new Date(analytics.providerStatus.suno.checked_at).toLocaleTimeString() : 'Never'}
+                        </div>
+                      </div>
+
+                      {/* Apollo Post-Processing Pipeline Status Card */}
+                      <div className="bg-[var(--canvas-elevated)] border border-[var(--hairline)] rounded-[12px] p-4 flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-[13px]">Apollo Post-Processing Pipeline</span>
+                          <span className={`px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold border ${
+                            analytics?.providerStatus?.udio?.status === 'healthy' 
+                              ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/20'
+                              : analytics?.providerStatus?.udio?.status === 'degraded'
+                              ? 'bg-yellow-950/40 text-yellow-400 border-yellow-500/20'
+                              : 'bg-zinc-850 text-zinc-500 border-zinc-700'
+                          }`}>
+                            {analytics?.providerStatus?.udio?.status === 'healthy' ? 'ACTIVE' : (analytics?.providerStatus?.udio?.status || 'UNKNOWN')}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-[var(--ink-secondary)] flex justify-between">
+                          <span>Processing Latency:</span>
+                          <span className="font-mono">{analytics?.providerStatus?.udio?.latency_ms ? `${analytics.providerStatus.udio.latency_ms}ms` : 'N/A'}</span>
+                        </div>
+                        <div className="text-[10px] text-[var(--ink-muted)] font-mono">
+                          Checked: {analytics?.providerStatus?.udio?.checked_at ? new Date(analytics.providerStatus.udio.checked_at).toLocaleTimeString() : 'Never'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Recent Tracks */}
                   <div className="space-y-4 pt-4 border-t border-[var(--hairline)]">
                     <h3 className="text-[16px] font-semibold text-[var(--ink)]">Recent Composition Outputs</h3>
@@ -320,9 +376,9 @@ export default function AdminDashboard() {
                                   {new Date(track.createdAt).toLocaleDateString()}
                                 </td>
                                 <td className="px-5 py-3.5 text-right">
-                                  {track.id ? (
+                                  {track.audioUrl ? (
                                     <button
-                                      onClick={() => togglePlayTrack(track.id, track.audioUrl || `https://api.sunoapi.org/music/${track.id}.mp3`)}
+                                      onClick={() => togglePlayTrack(track.id, track.audioUrl)}
                                       className="p-2 rounded-full bg-[var(--accent-muted)] hover:bg-[var(--accent)] border border-[var(--accent)] text-[var(--accent-glow)] hover:text-[var(--ink)] transition-colors cursor-pointer"
                                     >
                                       {playingTrackId === track.id ? <Pause size={12} /> : <Play size={12} />}

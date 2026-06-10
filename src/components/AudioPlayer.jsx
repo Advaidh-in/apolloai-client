@@ -1,8 +1,73 @@
 import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Download, Shield, HelpCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+import TimelineVisualizer from './TimelineVisualizer';
+import api from '../utils/api';
 
 export default function AudioPlayer({ audioData, onFeedback }) {
-  const { audioUrl, coverArtUrl, duration, title, validation } = audioData;
+  const { 
+    audioUrl, coverArtUrl, duration, title, validation,
+    spectrogramUrl, certificateUrl, plagiarismReportUrl,
+    sections, aiPercentage, verification, provider
+  } = audioData;
+
+  const [currentCertificateUrl, setCurrentCertificateUrl] = useState(certificateUrl);
+  const [currentPlagiarismReportUrl, setCurrentPlagiarismReportUrl] = useState(plagiarismReportUrl);
+
+  const downloadFile = async (url, filename) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Failed to download file directly, opening in new tab instead:", err);
+      window.open(url, '_blank');
+    }
+  };
+
+  useEffect(() => {
+    setCurrentCertificateUrl(certificateUrl);
+  }, [certificateUrl]);
+
+  useEffect(() => {
+    setCurrentPlagiarismReportUrl(plagiarismReportUrl);
+  }, [plagiarismReportUrl]);
+
+  useEffect(() => {
+    const trackId = audioData.trackId || audioData.id;
+    if (!trackId || (currentCertificateUrl && currentPlagiarismReportUrl)) return;
+
+    let active = true;
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await api.get(`/api/tracks/${trackId}`);
+        if (active) {
+          if (res.data.certificateUrl) {
+            setCurrentCertificateUrl(res.data.certificateUrl);
+          }
+          if (res.data.plagiarismReportUrl) {
+            setCurrentPlagiarismReportUrl(res.data.plagiarismReportUrl);
+          }
+          if (res.data.certificateUrl && res.data.plagiarismReportUrl) {
+            clearInterval(pollInterval);
+          }
+        }
+      } catch (err) {
+        console.error("Error polling track details:", err);
+      }
+    }, 3000);
+
+    return () => {
+      active = false;
+      clearInterval(pollInterval);
+    };
+  }, [audioData.trackId, audioData.id, currentCertificateUrl, currentPlagiarismReportUrl]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [activeTab, setActiveTab] = useState(null); // 'copyright' | 'patent' | 'youtube' | 'licensing'
@@ -15,6 +80,54 @@ export default function AudioPlayer({ audioData, onFeedback }) {
   const dragStart = useRef({ x: 0, y: 0 });
   const historyDataRef = useRef(null);
 
+  const renderVerificationBadges = () => {
+    const origin = verification?.originType || "AI_GENERATED";
+    const status = verification?.status || "VERIFIED";
+    const aiPct = aiPercentage !== undefined ? aiPercentage : 100;
+    
+    return (
+      <div className="flex flex-wrap gap-1.5 mt-1.5">
+        {origin === "AI_GENERATED" && (
+          <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold bg-[var(--accent-muted)] border border-[var(--accent)] text-[var(--accent-glow)] tracking-wider">
+            AI Generated
+          </span>
+        )}
+        {origin === "AI_ASSISTED" && (
+          <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold bg-[var(--accent-muted)] border border-[var(--accent-deep)] text-[var(--ink)] tracking-wider">
+            AI Assisted
+          </span>
+        )}
+        {origin === "HUMAN_RECORDED" && (
+          <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold bg-emerald-950/40 border border-[var(--success)]/30 text-emerald-400 tracking-wider">
+            Human Recorded
+          </span>
+        )}
+        {origin === "IMPORTED" && (
+          <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold bg-amber-950/40 border border-amber-500/30 text-amber-400 tracking-wider">
+            Imported
+          </span>
+        )}
+        {status === "VERIFIED" && (
+          <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold bg-cyan-950/40 border border-[var(--wave)]/30 text-cyan-400 tracking-wider flex items-center gap-0.5">
+            <CheckCircle2 size={9} /> Verified
+          </span>
+        )}
+        {status === "UNVERIFIED" && (
+          <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold bg-zinc-800 border border-zinc-700 text-zinc-400 tracking-wider">
+            Unverified
+          </span>
+        )}
+        {status === "PENDING" && (
+          <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold bg-yellow-950/40 border border-yellow-500/30 text-yellow-400 tracking-wider animate-pulse">
+            Analyzing...
+          </span>
+        )}
+        <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-mono uppercase font-bold bg-[var(--canvas-elevated)] border border-[var(--hairline)] text-[var(--ink-secondary)]">
+          {Math.round(aiPct)}% AI
+        </span>
+      </div>
+    );
+  };
   const historyRows = 32;
   const cols = 40;
 
@@ -318,29 +431,59 @@ export default function AudioPlayer({ audioData, onFeedback }) {
             <h3 className="text-[18px] font-bold font-['Space_Grotesk'] text-[var(--ink)] tracking-tight">
               {title || 'Apollo Composition'}
             </h3>
-            <p className="font-['JetBrains_Mono'] text-[12px] text-[var(--ink-muted)] mt-1">
-              {formatTime(duration || 0)}
+            <p className="font-['JetBrains_Mono'] text-[11px] text-[var(--ink-muted)] mt-0.5">
+              {formatTime(duration || 0)} • APOLLO
             </p>
+            {renderVerificationBadges()}
           </div>
         </div>
 
         <audio ref={audioRef} src={audioUrl} preload="auto" />
 
-        {/* 3D Spectrogram Visualizer */}
-        <div className="relative rounded-xl border border-[var(--hairline)] bg-[var(--canvas)] overflow-hidden shadow-[inset_0_0_20px_rgba(124,58,237,0.15)]">
-          <div className="absolute top-2 left-3 text-[10px] uppercase font-bold text-[var(--ink-muted)] tracking-wider">
-            Interactive 3D Spectrogram (Drag to rotate)
-          </div>
-          <canvas 
-            ref={canvasRef}
-            width={550}
-            height={130}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            className="w-full h-[130px] block cursor-grab active:cursor-grabbing"
-          />
+        {/* 3D/Static Spectrogram Visualizer */}
+        <div className="relative rounded-xl border border-[var(--hairline)] bg-[var(--canvas)] overflow-hidden shadow-[inset_0_0_20px_rgba(124,58,237,0.15)] h-[130px]">
+          {spectrogramUrl ? (
+            <div className="relative w-full h-full">
+              <img 
+                src={spectrogramUrl} 
+                alt="Static Spectrogram" 
+                className="w-full h-full object-cover opacity-85"
+              />
+              <div 
+                className="absolute top-0 bottom-0 w-[2.5px] bg-[var(--wave)] shadow-[0_0_12px_var(--wave)] pointer-events-none transition-all duration-75"
+                style={{ left: `${(currentTime / (duration || 1)) * 100}%` }}
+              />
+              <div className="absolute top-2 left-3 text-[9px] uppercase font-bold text-[var(--ink-muted)] tracking-wider bg-[var(--canvas)]/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
+                Mel-Spectrogram Signature
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadFile(spectrogramUrl, `${title || 'composition'}_spectrogram.png`);
+                }}
+                className="absolute top-2 right-3 p-1.5 rounded bg-[var(--canvas)]/60 hover:bg-[var(--canvas)] hover:text-[var(--ink)] text-[var(--ink-secondary)] backdrop-blur-sm border border-[var(--hairline)] transition-all cursor-pointer flex items-center gap-1.5 text-[9px] uppercase font-bold tracking-wider hover:scale-105 active:scale-95 shadow-sm"
+                title="Download Spectrogram Image"
+              >
+                <Download size={10} /> Download
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="absolute top-2 left-3 text-[10px] uppercase font-bold text-[var(--ink-muted)] tracking-wider">
+                Interactive 3D Spectrogram (Drag to rotate)
+              </div>
+              <canvas 
+                ref={canvasRef}
+                width={550}
+                height={130}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                className="w-full h-[130px] block cursor-grab active:cursor-grabbing"
+              />
+            </>
+          )}
         </div>
 
         {/* Controls */}
@@ -372,6 +515,21 @@ export default function AudioPlayer({ audioData, onFeedback }) {
           </div>
         </div>
 
+        {/* Structural Sections Timeline */}
+        {sections && sections.length > 0 && (
+          <TimelineVisualizer 
+            sections={sections} 
+            duration={duration} 
+            currentTime={currentTime} 
+            onScrub={(time) => {
+              if (audioRef.current) {
+                audioRef.current.currentTime = time;
+                setCurrentTime(time);
+              }
+            }}
+          />
+        )}
+
         {/* Audio Validation Compliance Panel */}
         <div className="p-4 rounded-xl bg-[var(--canvas)] border border-[var(--hairline)] flex flex-col gap-3 shadow-[inset_0_0_15px_rgba(0,0,0,0.4)]">
           <div className="flex justify-between items-center">
@@ -389,28 +547,22 @@ export default function AudioPlayer({ audioData, onFeedback }) {
               )}
             </div>
             <span className={`text-[12px] font-mono font-bold px-2 py-0.5 rounded-full ${plagScore <= 25 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-              Similarity: {plagScore.toFixed(0)}% (Threshold: 25%)
+              Similarity: {plagScore.toFixed(0)}%
             </span>
           </div>
 
           <div className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
             {isCompliancePassed 
               ? "All fingerprinting database matching complete. No plagiarism detected. You can safely deploy and monetize this track."
-              : "Similarity scanning matched active fingerprints above the 25% safety threshold. We recommend adjusting chords or arrangement and regenerating."}
+              : "Similarity scanning matched active fingerprints above the safety threshold. We recommend adjusting chords or arrangement and regenerating."}
           </div>
 
           {/* Digital Signature & Verification metadata */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1 border-t border-[var(--hairline)]/50 pt-3 text-[11px] font-mono text-[var(--ink-secondary)] bg-[var(--canvas-overlay)]/40 p-2.5 rounded-lg border border-[var(--hairline)]/40">
+          <div className="mt-1 border-t border-[var(--hairline)]/50 pt-3 text-[11px] font-mono text-[var(--ink-secondary)] bg-[var(--canvas-overlay)]/40 p-2.5 rounded-lg border border-[var(--hairline)]/40">
             <div className="flex flex-col gap-0.5 min-w-0">
               <span className="text-[9px] uppercase font-bold text-[var(--ink-muted)] tracking-wider">Digital Signature (SHA-256)</span>
               <span className="text-[var(--ink)] truncate block" title={validation?.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}>
                 {validation?.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <span className="text-[9px] uppercase font-bold text-[var(--ink-muted)] tracking-wider">ShazamKit Verification ID</span>
-              <span className="text-[var(--accent-glow)] font-semibold truncate block">
-                SZ-{title ? title.substring(0,3).toUpperCase() : 'APP'}-{duration ? Math.round(duration) : '00'}-{validation?.sha256 ? validation.sha256.substring(0,8).toUpperCase() : '852B855'}
               </span>
             </div>
           </div>
@@ -661,13 +813,6 @@ export default function AudioPlayer({ audioData, onFeedback }) {
                     </ul>
                   </div>
 
-                  {/* ShazamKit Insight Notice */}
-                  <div className="bg-[var(--surface)] p-2.5 rounded-lg border border-[var(--hairline)] mt-1 flex items-start gap-2">
-                    <HelpCircle size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
-                    <div className="text-[10px] text-[var(--ink-secondary)] leading-relaxed">
-                      <strong className="text-[var(--ink)]">ShazamKit Copyright Note:</strong> ShazamKit is designed for exact match audio identification. Because this track is composed and generated from scratch, ShazamKit returns 0% match (completely unique wave signature). Our cross-correlation scanner analyzes structural harmonic layout to ensure 100% legal plagiarism safety.
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
@@ -716,6 +861,7 @@ export default function AudioPlayer({ audioData, onFeedback }) {
               </div>
             )}
 
+            {/* Expandable Tab Content for Copyright */}
             {activeTab === 'copyright' && (
               <div className="p-3 bg-[var(--canvas)] border border-[var(--hairline)] rounded-lg text-[12px] space-y-2 animate-message-in">
                 <div className="font-bold text-[var(--ink)]">Copyright & Patent Guidelines</div>
@@ -733,17 +879,61 @@ export default function AudioPlayer({ audioData, onFeedback }) {
         )}
 
         {/* Footer Actions */}
-        <div className="flex justify-between items-center mt-2 border-t border-[var(--hairline)] pt-3">
-          <button 
-            className="flex items-center gap-2 px-[16px] py-[8px] rounded-[6px] border border-[var(--hairline)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--ink)] text-[var(--ink-secondary)] transition-all font-['Inter'] text-[13px] cursor-pointer"
-            onClick={() => window.open(audioUrl, '_blank')}
-          >
-            <Download size={14} /> Download MP3
-          </button>
+        <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center mt-2 border-t border-[var(--hairline)] pt-3">
+          <div className="flex flex-wrap gap-2">
+            <button 
+              className="flex items-center justify-center gap-2 px-[12px] py-[7px] rounded-[6px] border border-[var(--hairline)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--ink)] text-[var(--ink-secondary)] transition-all font-['Inter'] text-[12px] cursor-pointer"
+              onClick={() => downloadFile(audioUrl, `${title || 'composition'}.mp3`)}
+            >
+              <Download size={12} /> Audio MP3
+            </button>
+            {spectrogramUrl && (
+              <button 
+                className="flex items-center justify-center gap-2 px-[12px] py-[7px] rounded-[6px] border border-[var(--hairline)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--ink)] text-[var(--ink-secondary)] transition-all font-['Inter'] text-[12px] cursor-pointer"
+                onClick={() => downloadFile(spectrogramUrl, `${title || 'composition'}_spectrogram.png`)}
+              >
+                <Download size={12} className="text-[var(--accent)]" /> Spectrogram PNG
+              </button>
+            )}
+            
+            {currentCertificateUrl ? (
+              <button 
+                className="flex items-center justify-center gap-2 px-[12px] py-[7px] rounded-[6px] border border-[var(--hairline)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--ink)] text-[var(--ink-secondary)] transition-all font-['Inter'] text-[12px] cursor-pointer"
+                onClick={() => window.open(currentCertificateUrl, '_blank')}
+              >
+                <Shield size={12} className="text-[var(--accent)]" /> Certificate PDF
+              </button>
+            ) : (
+              <button 
+                disabled
+                className="flex items-center justify-center gap-2 px-[12px] py-[7px] rounded-[6px] border border-[var(--hairline)] bg-transparent text-[var(--ink-muted)] opacity-55 font-['Inter'] text-[12px]"
+              >
+                <div className="w-3.5 h-3.5 border border-t-transparent border-[var(--ink-muted)] rounded-full animate-spin"></div>
+                Cert Preparing...
+              </button>
+            )}
+            
+            {currentPlagiarismReportUrl ? (
+              <button 
+                className="flex items-center justify-center gap-2 px-[12px] py-[7px] rounded-[6px] border border-[var(--hairline)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--ink)] text-[var(--ink-secondary)] transition-all font-['Inter'] text-[12px] cursor-pointer"
+                onClick={() => window.open(currentPlagiarismReportUrl, '_blank')}
+              >
+                <Shield size={12} className="text-[var(--wave)]" /> Plagiarism Report PDF
+              </button>
+            ) : (
+              <button 
+                disabled
+                className="flex items-center justify-center gap-2 px-[12px] py-[7px] rounded-[6px] border border-[var(--hairline)] bg-transparent text-[var(--ink-muted)] opacity-55 font-['Inter'] text-[12px]"
+              >
+                <div className="w-3.5 h-3.5 border border-t-transparent border-[var(--ink-muted)] rounded-full animate-spin"></div>
+                Report Preparing...
+              </button>
+            )}
+          </div>
 
           <div 
             onClick={onFeedback}
-            className="text-[13px] text-[var(--accent)] hover:underline cursor-pointer font-['Inter']"
+            className="text-[13px] text-[var(--accent)] hover:underline cursor-pointer font-['Inter'] text-right sm:text-left self-end sm:self-auto"
           >
             Tell Apollo what to change →
           </div>

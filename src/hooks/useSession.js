@@ -7,11 +7,11 @@ export function useSession() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchOrCreateSession = useCallback(async () => {
+  const fetchOrCreateSession = useCallback(async (force = false) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.post('/api/session/new');
+      const res = await api.post(`/api/session/new${force ? '?force=true' : ''}`);
       setSessionId(res.data.sessionId);
       setSessionData(res.data.session);
     } catch (err) {
@@ -27,7 +27,7 @@ export function useSession() {
     const init = async () => {
       await Promise.resolve(); // avoid synchronous state updates
       if (active) {
-        fetchOrCreateSession();
+        fetchOrCreateSession(false);
       }
     };
     init();
@@ -39,7 +39,7 @@ export function useSession() {
   const resetSession = useCallback(async () => {
     setSessionId(null);
     setSessionData(null);
-    await fetchOrCreateSession();
+    await fetchOrCreateSession(true);
   }, [fetchOrCreateSession]);
 
   return { sessionId, sessionData, setSessionData, loading, resetSession, error };

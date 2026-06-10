@@ -1,4 +1,4 @@
-export default function ProgressBar({ currentStep, totalSteps = 11 }) {
+export default function ProgressBar({ currentStep, totalSteps = 12 }) {
   const percentage = Math.min(100, Math.max(0, (currentStep / totalSteps) * 100));
 
   return (

@@ -693,13 +693,13 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
                   <div key={idx} className="border border-[var(--hairline)] rounded-xl overflow-hidden bg-[var(--surface)]">
                     <button 
                       onClick={() => setExpandedConcept(isOpen ? null : idx)}
-                      className="w-full px-4 py-3 flex justify-between items-center text-left hover:bg-[var(--surface-hover)] transition-all cursor-pointer"
+                      className="w-full px-4 py-3 flex justify-between items-center text-left hover:bg-[var(--surface-hover)] transition-all cursor-pointer gap-4"
                     >
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <h4 className="text-[13px] font-bold text-[var(--ink)]">{item.concept}</h4>
                         {!isOpen && <p className="text-[11px] text-[var(--ink-secondary)] mt-0.5 truncate">{item.summary}</p>}
                       </div>
-                      <span className="text-[10px] text-[var(--ink-muted)] font-mono">{isOpen ? '▲' : '▼'}</span>
+                      <span className="text-[10px] text-[var(--ink-muted)] font-mono shrink-0">{isOpen ? '▲' : '▼'}</span>
                     </button>
                     {isOpen && (
                       <div className="px-4 pb-3 pt-1 border-t border-[var(--hairline)] bg-[var(--canvas-overlay)]">
