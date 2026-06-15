@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import MessageBubble from './MessageBubble';
 import ChoiceChips from './ChoiceChips';
 import InputBar from './InputBar';
@@ -24,23 +24,43 @@ export default function ChatWindow({
     window.scrollTo(0, 0);
   }, []);
 
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: scrollContainerRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
-  }, [sessionData?.conversationHistory, loading, audioStatus]);
-
   const history = sessionData?.conversationHistory || [];
+  const assistantMessages = history.filter(msg => msg.role === 'assistant');
+  const displayedStep = Math.min(12, Math.max(1, assistantMessages.length));
   
+  const [customPlaceholder, setCustomPlaceholder] = useState(null);
+
   const handleSend = (text) => {
     onSendMessage(text);
+    setCustomPlaceholder(null);
   };
 
   const handleChoice = (optionText) => {
-    onSendMessage(optionText);
+    const lower = optionText.toLowerCase();
+    const isCustom = lower.includes('custom') || lower.includes('write your own') || lower.includes('specify your own');
+    
+    if (isCustom) {
+      const getCustomPlaceholderText = (text) => {
+        const t = text.toLowerCase();
+        if (t.includes('artist')) return "Enter custom artist name...";
+        if (t.includes('genre')) return "Enter custom genre flavor...";
+        if (t.includes('instrument')) return "Enter custom instrument name...";
+        if (t.includes('mood')) return "Enter custom mood...";
+        return "Enter custom choice...";
+      };
+      
+      const placeholderText = getCustomPlaceholderText(optionText);
+      setCustomPlaceholder(placeholderText);
+      
+      // Focus the input element
+      const input = document.querySelector('input[type="text"]');
+      if (input) {
+        input.focus();
+      }
+    } else {
+      onSendMessage(optionText);
+      setCustomPlaceholder(null);
+    }
   };
 
   const extractChoices = (msg) => {
@@ -66,6 +86,41 @@ export default function ChatWindow({
   const choices = parsedChoices.length > 0 ? parsedChoices : fallbackChoices;
   const isFallback = parsedChoices.length === 0 && fallbackChoices.length > 0;
 
+  useEffect(() => {
+    setCustomPlaceholder(null);
+    if (scrollContainerRef.current) {
+      const isAssistant = lastMsg?.role === 'assistant';
+      const hasChips = !loading && audioStatus !== 'generating' && audioStatus !== 'success' && choices.length > 0;
+
+      if (isAssistant && hasChips) {
+        // Find all message bubbles
+        const bubbles = scrollContainerRef.current.querySelectorAll('.animate-message-in');
+        const lastBubble = bubbles[bubbles.length - 1];
+        const userBubble = bubbles.length >= 2 ? bubbles[bubbles.length - 2] : null;
+        const targetBubble = userBubble || lastBubble;
+
+        if (targetBubble) {
+          const containerRect = scrollContainerRef.current.getBoundingClientRect();
+          const bubbleRect = targetBubble.getBoundingClientRect();
+          const relativeTop = bubbleRect.top - containerRect.top;
+          // Add a small offset (16px) for aesthetics so the bubble top isn't cut off
+          const targetScrollTop = scrollContainerRef.current.scrollTop + relativeTop - 16;
+          
+          scrollContainerRef.current.scrollTo({
+            top: Math.max(0, targetScrollTop),
+            behavior: 'smooth'
+          });
+          return;
+        }
+      }
+
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [sessionData?.conversationHistory, loading, audioStatus, choices, lastMsg]);
+
   // Open theory helper sidebar for the chips context
   const handleChipsInfo = (e) => {
     if (e) e.stopPropagation();
@@ -80,7 +135,7 @@ export default function ChatWindow({
 
   return (
     <div className="flex flex-col flex-1 bg-[var(--canvas)] relative min-h-0">
-      <ProgressBar currentStep={sessionData?.step || 1} />
+      <ProgressBar currentStep={displayedStep} />
       
       <div 
         ref={scrollContainerRef}
@@ -170,6 +225,7 @@ export default function ChatWindow({
         onBack={sessionData?.step > 1 ? onBack : null}
         onSkip={choices.length > 0 && audioStatus !== 'success' ? () => handleChoice(choices[0]) : null}
         disabled={loading || audioStatus === 'generating'} 
+        placeholder={customPlaceholder}
       />
     </div>
   );

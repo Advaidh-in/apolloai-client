@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowUp, ChevronLeft } from 'lucide-react';
 
-export default function InputBar({ onSend, onBack, onSkip, disabled }) {
+export default function InputBar({ onSend, onBack, onSkip, disabled, placeholder }) {
   const [text, setText] = useState('');
 
   const handleSubmit = (e) => {
@@ -61,7 +61,7 @@ export default function InputBar({ onSend, onBack, onSkip, disabled }) {
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Type your response or pick an option above..."
+            placeholder={placeholder || "Type your response or pick an option above..."}
             disabled={disabled}
             className="w-full bg-[var(--surface)] border border-[var(--hairline)] text-[var(--ink)] font-['Inter'] text-[14px] rounded-[10px] p-[10px_48px_10px_16px] focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-muted)] disabled:opacity-50 transition-all placeholder:text-[var(--ink-muted)]"
           />
