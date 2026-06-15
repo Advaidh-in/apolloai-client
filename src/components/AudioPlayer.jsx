@@ -12,6 +12,7 @@ export default function AudioPlayer({ audioData, onFeedback }) {
 
   const [currentCertificateUrl, setCurrentCertificateUrl] = useState(certificateUrl);
   const [currentPlagiarismReportUrl, setCurrentPlagiarismReportUrl] = useState(plagiarismReportUrl);
+  const [currentSpectrogramUrl, setCurrentSpectrogramUrl] = useState(spectrogramUrl);
 
   const downloadFile = async (url, filename) => {
     try {
@@ -40,8 +41,12 @@ export default function AudioPlayer({ audioData, onFeedback }) {
   }, [plagiarismReportUrl]);
 
   useEffect(() => {
+    setCurrentSpectrogramUrl(spectrogramUrl);
+  }, [spectrogramUrl]);
+
+  useEffect(() => {
     const trackId = audioData.trackId || audioData.id;
-    if (!trackId || (currentCertificateUrl && currentPlagiarismReportUrl)) return;
+    if (!trackId || (currentCertificateUrl && currentPlagiarismReportUrl && currentSpectrogramUrl)) return;
 
     let active = true;
     const pollInterval = setInterval(async () => {
@@ -54,7 +59,10 @@ export default function AudioPlayer({ audioData, onFeedback }) {
           if (res.data.plagiarismReportUrl) {
             setCurrentPlagiarismReportUrl(res.data.plagiarismReportUrl);
           }
-          if (res.data.certificateUrl && res.data.plagiarismReportUrl) {
+          if (res.data.spectrogramUrl) {
+            setCurrentSpectrogramUrl(res.data.spectrogramUrl);
+          }
+          if (res.data.certificateUrl && res.data.plagiarismReportUrl && res.data.spectrogramUrl) {
             clearInterval(pollInterval);
           }
         }
@@ -67,7 +75,7 @@ export default function AudioPlayer({ audioData, onFeedback }) {
       active = false;
       clearInterval(pollInterval);
     };
-  }, [audioData.trackId, audioData.id, currentCertificateUrl, currentPlagiarismReportUrl]);
+  }, [audioData.trackId, audioData.id, currentCertificateUrl, currentPlagiarismReportUrl, currentSpectrogramUrl]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [activeTab, setActiveTab] = useState(null); // 'copyright' | 'patent' | 'youtube' | 'licensing'
@@ -442,10 +450,10 @@ export default function AudioPlayer({ audioData, onFeedback }) {
 
         {/* 3D/Static Spectrogram Visualizer */}
         <div className="relative rounded-xl border border-[var(--hairline)] bg-[var(--canvas)] overflow-hidden shadow-[inset_0_0_20px_rgba(124,58,237,0.15)] h-[130px]">
-          {spectrogramUrl ? (
+          {currentSpectrogramUrl ? (
             <div className="relative w-full h-full">
               <img 
-                src={spectrogramUrl} 
+                src={currentSpectrogramUrl} 
                 alt="Static Spectrogram" 
                 className="w-full h-full object-cover opacity-85"
               />
@@ -459,12 +467,12 @@ export default function AudioPlayer({ audioData, onFeedback }) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  downloadFile(spectrogramUrl, `${title || 'composition'}_spectrogram.png`);
+                  downloadFile(currentSpectrogramUrl, `${title || 'composition'}_spectrogram.png`);
                 }}
                 className="absolute top-2 right-3 p-1.5 rounded bg-[var(--canvas)]/60 hover:bg-[var(--canvas)] hover:text-[var(--ink)] text-[var(--ink-secondary)] backdrop-blur-sm border border-[var(--hairline)] transition-all cursor-pointer flex items-center gap-1.5 text-[9px] uppercase font-bold tracking-wider hover:scale-105 active:scale-95 shadow-sm"
                 title="Download Spectrogram Image"
               >
-                <Download size={10} /> Download
+                <Download size={10} /> Download Spectrogram Image
               </button>
             </div>
           ) : (
@@ -887,12 +895,20 @@ export default function AudioPlayer({ audioData, onFeedback }) {
             >
               <Download size={12} /> Audio MP3
             </button>
-            {spectrogramUrl && (
+            {coverArtUrl && (
               <button 
                 className="flex items-center justify-center gap-2 px-[12px] py-[7px] rounded-[6px] border border-[var(--hairline)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--ink)] text-[var(--ink-secondary)] transition-all font-['Inter'] text-[12px] cursor-pointer"
-                onClick={() => downloadFile(spectrogramUrl, `${title || 'composition'}_spectrogram.png`)}
+                onClick={() => downloadFile(coverArtUrl, `${title || 'composition'}_cover.png`)}
               >
-                <Download size={12} className="text-[var(--accent)]" /> Spectrogram PNG
+                <Download size={12} className="text-amber-500" /> Cover Art PNG
+              </button>
+            )}
+            {currentSpectrogramUrl && (
+              <button 
+                className="flex items-center justify-center gap-2 px-[12px] py-[7px] rounded-[6px] border border-[var(--hairline)] bg-transparent hover:border-[var(--accent)] hover:text-[var(--ink)] text-[var(--ink-secondary)] transition-all font-['Inter'] text-[12px] cursor-pointer"
+                onClick={() => downloadFile(currentSpectrogramUrl, `${title || 'composition'}_spectrogram.png`)}
+              >
+                <Download size={12} className="text-[var(--accent)]" /> Spectrogram Image
               </button>
             )}
             

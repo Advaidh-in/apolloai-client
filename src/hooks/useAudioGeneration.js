@@ -21,7 +21,9 @@ export function useAudioGeneration(sessionId, compositionState = null) {
         validation: compositionState.validation,
         certificateUrl: compositionState.certificateUrl,
         plagiarismReportUrl: compositionState.plagiarismReportUrl,
-        trackId: compositionState.trackId
+        trackId: compositionState.trackId,
+        spectrogramUrl: compositionState.spectrogramUrl,
+        spectrogramThumbUrl: compositionState.spectrogramThumbUrl
       }
     : localAudioData;
 

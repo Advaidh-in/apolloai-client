@@ -346,8 +346,11 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
 
   if (!session) return null;
 
-  const { step, compositionState = {}, sessionId } = session;
+  const { step, conversationHistory = [], compositionState = {}, sessionId } = session;
   const { mood, subGenre, bpm, timeSignature, key: musicalKey, artist, dynamics, instruments = [], recommendationWarning } = compositionState;
+
+  const assistantMessages = conversationHistory.filter(msg => msg.role === 'assistant');
+  const displayedStep = Math.min(12, Math.max(1, assistantMessages.length));
 
   const handleStepJump = async (stepNum) => {
     try {
@@ -521,12 +524,12 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
             <section>
               <div className="flex justify-between items-end mb-2">
                 <h3 className="text-[11px] font-bold text-[var(--ink-secondary)] uppercase tracking-[0.1em]">Journey Progress</h3>
-                <span className="text-[11px] font-mono text-[var(--accent)]">{step}/12</span>
+                <span className="text-[11px] font-mono text-[var(--accent)]">{displayedStep}/12</span>
               </div>
               <div className="h-1.5 w-full bg-[var(--surface)] rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-[var(--accent)] transition-all duration-500 shadow-[0_0_10px_var(--accent-muted)]" 
-                  style={{ width: `${(step / 12) * 100}%` }}
+                  style={{ width: `${(displayedStep / 12) * 100}%` }}
                 />
               </div>
             </section>
@@ -556,9 +559,9 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
               <InfoRow icon={KeyIcon} label="Key" value={musicalKey} stepLink={2} onStepJump={handleStepJump} />
               <InfoRow icon={Music} label="Genre" value={genre} stepLink={3} onStepJump={handleStepJump} />
               <InfoRow icon={Sliders} label="Sub-Genre" value={subGenre} stepLink={4} onStepJump={handleStepJump} />
-              <InfoRow icon={User} label="Inspiration" value={artist} stepLink={8} onStepJump={handleStepJump} />
-              <InfoRow icon={Clock} label="Tempo" value={bpm ? `${bpm} BPM` : null} stepLink={7} onStepJump={handleStepJump} />
               <InfoRow icon={HelpCircle} label="Signature" value={timeSignature} stepLink={6} onStepJump={handleStepJump} />
+              <InfoRow icon={Clock} label="Tempo" value={bpm ? `${bpm} BPM` : null} stepLink={7} onStepJump={handleStepJump} />
+              <InfoRow icon={User} label="Inspiration" value={artist} stepLink={8} onStepJump={handleStepJump} />
               <InfoRow icon={Volume2} label="Dynamics" value={dynamics} stepLink={10} onStepJump={handleStepJump} />
             </section>
 
@@ -795,14 +798,14 @@ export default function CompositionPanel({ session, onGenerate, setSessionData }
       <div className="p-[20px] bg-transparent border-t border-[var(--hairline)] shrink-0">
         <button 
           onClick={onGenerate}
-          disabled={step < 4}
+          disabled={displayedStep < 3}
           className={`w-full py-[12px] px-[20px] rounded-[10px] text-[14px] font-bold transition-all active:scale-[0.97] block disabled:opacity-40 disabled:cursor-not-allowed
-            ${step >= 4 
+            ${displayedStep >= 3 
               ? 'bg-[var(--accent)] text-white cursor-pointer accent-glow-button' 
               : 'bg-[var(--surface)] text-[var(--ink-muted)] cursor-not-allowed'}
           `}
         >
-          {step >= 12 ? 'Generate Final Track' : 'Generate Now (Quick)'}
+          {displayedStep >= 12 ? 'Generate Final Track' : 'Generate Now (Quick)'}
         </button>
       </div>
     </div>
