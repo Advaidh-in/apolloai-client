@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../utils/api';
 
-export function useAudioGeneration(sessionId, compositionState = null) {
+export function useAudioGeneration(sessionId, compositionState = null, setSessionData = null) {
   const [localStatus, setLocalStatus] = useState('idle'); // idle | generating | success | error
   const [localAudioData, setLocalAudioData] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -47,6 +47,25 @@ export function useAudioGeneration(sessionId, compositionState = null) {
       const response = await api.post('/api/generate', { sessionId });
       setLocalAudioData(response.data);
       setLocalStatus('success');
+      if (setSessionData) {
+        setSessionData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            compositionState: {
+              ...prev.compositionState,
+              audioUrl: response.data.audioUrl,
+              coverArtUrl: response.data.coverArtUrl,
+              duration: response.data.duration,
+              trackTitle: response.data.title,
+              promptUsed: response.data.promptUsed,
+              lyrics: response.data.lyrics,
+              validation: response.data.validation,
+              trackId: response.data.trackId
+            }
+          };
+        });
+      }
     } catch (error) {
       console.error("Audio generation error:", error);
       setLocalStatus('error');
@@ -71,7 +90,7 @@ export function useAudioGeneration(sessionId, compositionState = null) {
         setErrorMsg(detail || "Failed to generate track. Please try again.");
       }
     }
-  }, [sessionId]);
+  }, [sessionId, setSessionData]);
 
   const reset = useCallback(() => {
     setLocalStatus('idle');

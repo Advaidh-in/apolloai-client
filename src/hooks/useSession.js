@@ -11,7 +11,22 @@ export function useSession() {
     setLoading(true);
     setError(null);
     try {
+      const storedId = localStorage.getItem('apollo_session_id');
+      if (storedId && !force) {
+        try {
+          const res = await api.get(`/api/session/${storedId}`);
+          setSessionId(storedId);
+          setSessionData(res.data.session);
+          setLoading(false);
+          return;
+        } catch (err) {
+          console.warn("Stored session not found or invalid, creating new one:", err);
+          localStorage.removeItem('apollo_session_id');
+        }
+      }
+
       const res = await api.post(`/api/session/new${force ? '?force=true' : ''}`);
+      localStorage.setItem('apollo_session_id', res.data.sessionId);
       setSessionId(res.data.sessionId);
       setSessionData(res.data.session);
     } catch (err) {
@@ -37,6 +52,7 @@ export function useSession() {
   }, [fetchOrCreateSession]);
 
   const resetSession = useCallback(async () => {
+    localStorage.removeItem('apollo_session_id');
     setSessionId(null);
     setSessionData(null);
     await fetchOrCreateSession(true);

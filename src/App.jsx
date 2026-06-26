@@ -14,8 +14,10 @@ import api from './utils/api';
 function ChatWorkspace({ onLogout }) {
   const { sessionId, sessionData, setSessionData, loading: sessionLoading, resetSession, error: sessionError } = useSession();
   const { sendMessage, loading: chatLoading } = useChat(sessionId, setSessionData);
-  const { generateTrack, status: audioStatus, audioData, errorMsg: audioError, reset: resetAudio } = useAudioGeneration(sessionId, sessionData?.compositionState);
+  const { generateTrack, status: audioStatus, audioData, errorMsg: audioError, reset: resetAudio } = useAudioGeneration(sessionId, sessionData?.compositionState, setSessionData);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  // Mode state: 'menu' | 'composition' | 'hum-to-search' | 'verify'
+  const [mode, setMode] = useState('menu');
 
   const handleBack = async () => {
     if (!sessionData || sessionData.step <= 1) return;
@@ -30,12 +32,12 @@ function ChatWorkspace({ onLogout }) {
     }
   };
 
-  // Initialize conversation if empty
+  // Only auto-start the greeting when the user deliberately enters composition mode
   useEffect(() => {
-    if (sessionData && sessionData.conversationHistory.length === 0 && !chatLoading) {
+    if (mode === 'composition' && sessionData && sessionData.conversationHistory.length === 0 && !chatLoading) {
       sendMessage("Hello Apollo. I'd like to compose a track.");
     }
-  }, [sessionData, chatLoading, sendMessage]);
+  }, [mode, sessionData, chatLoading, sendMessage]);
 
   // Auto-generate track at Step 12 (only if not already generated)
   useEffect(() => {
@@ -53,23 +55,35 @@ function ChatWorkspace({ onLogout }) {
     );
   }
 
+  const handleBackToMenu = () => {
+    setMode('menu');
+  };
+
+  const handleStartComposition = async () => {
+    await resetSession();
+    resetAudio();
+    setMode('composition');
+  };
+
   return (
     <div className="flex h-[100dvh] w-full bg-[var(--canvas)] text-[var(--ink)] overflow-hidden font-sans relative">
       {/* Ambient Glow Nebulae */}
       <div className="absolute top-[-25%] left-[-15%] w-[60%] h-[60%] rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.12)_0%,transparent_75%)] blur-[80px] pointer-events-none animate-float-blob z-0" />
       <div className="absolute bottom-[-25%] right-[-15%] w-[60%] h-[60%] rounded-full bg-[radial-gradient(circle,rgba(6,182,212,0.08)_0%,transparent_75%)] blur-[80px] pointer-events-none animate-float-blob [animation-delay:-12s] z-0" />
 
-      {/* Sidebar Panel — desktop only */}
-      <div className="w-[320px] shrink-0 hidden md:flex flex-col glass-panel border-r border-[var(--hairline)] h-full overflow-hidden z-10 relative">
-        <CompositionPanel 
-          session={sessionData} 
-          onGenerate={generateTrack} 
-          setSessionData={setSessionData}
-        />
-      </div>
+      {/* Sidebar Panel — desktop only, composition mode only */}
+      {mode === 'composition' && (
+        <div className="w-[320px] shrink-0 hidden md:flex flex-col glass-panel border-r border-[var(--hairline)] h-full overflow-hidden z-10 relative">
+          <CompositionPanel 
+            session={sessionData} 
+            onGenerate={generateTrack} 
+            setSessionData={setSessionData}
+          />
+        </div>
+      )}
 
-      {/* Mobile Panel Drawer */}
-      {mobilePanelOpen && (
+      {/* Mobile Panel Drawer — composition mode only */}
+      {mode === 'composition' && mobilePanelOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex flex-col">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobilePanelOpen(false)} />
           <div className="relative mt-auto h-[85dvh] w-full glass-panel border-t border-[var(--hairline)] rounded-t-2xl overflow-hidden flex flex-col animate-message-in">
@@ -94,14 +108,26 @@ function ChatWorkspace({ onLogout }) {
       <div className="flex-1 flex flex-col min-w-0 h-full z-10 relative bg-[var(--canvas)]">
         <header className="h-[60px] md:h-[72px] shrink-0 flex items-center justify-between px-3 md:px-6 border-b border-[var(--hairline)] glass-panel z-20 relative">
           <div className="flex items-center gap-2 md:gap-3">
-            {/* Mobile: panel toggle */}
-            <button
-              onClick={() => setMobilePanelOpen(true)}
-              className="md:hidden p-2 rounded-lg bg-[var(--surface)] border border-[var(--hairline)] text-[var(--ink-secondary)] hover:text-[var(--accent-glow)] hover:border-[var(--accent)] transition-all cursor-pointer"
-              title="View composition brief"
-            >
-              <PanelLeft size={16} />
-            </button>
+            {/* Mobile: panel toggle — composition only */}
+            {mode === 'composition' && (
+              <button
+                onClick={() => setMobilePanelOpen(true)}
+                className="md:hidden p-2 rounded-lg bg-[var(--surface)] border border-[var(--hairline)] text-[var(--ink-secondary)] hover:text-[var(--accent-glow)] hover:border-[var(--accent)] transition-all cursor-pointer"
+                title="View composition brief"
+              >
+                <PanelLeft size={16} />
+              </button>
+            )}
+            {/* Back to Menu button — all non-menu modes */}
+            {mode !== 'menu' && (
+              <button
+                onClick={handleBackToMenu}
+                className="flex items-center gap-1.5 text-[12px] md:text-[13px] font-medium text-[var(--ink-secondary)] hover:text-[var(--ink)] transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-[var(--surface)] border border-transparent hover:border-[var(--hairline)]"
+              >
+                <span className="text-[var(--ink-secondary)]">←</span>
+                <span className="hidden sm:inline">Menu</span>
+              </button>
+            )}
             <div className="bg-[var(--accent)] w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shadow-[0_0_20px_var(--accent-muted)]">
               <Sparkles size={14} className="text-[var(--ink)]" />
             </div>
@@ -110,16 +136,18 @@ function ChatWorkspace({ onLogout }) {
             </h1>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
-            <button 
-              onClick={() => {
-                resetSession();
-                resetAudio();
-              }}
-              className="text-[12px] md:text-[13px] font-medium text-[var(--ink-secondary)] hover:text-[var(--ink)] transition-colors cursor-pointer"
-            >
-              <span className="hidden sm:inline">Start Over</span>
-              <span className="sm:hidden">Reset</span>
-            </button>
+            {mode === 'composition' && (
+              <button 
+                onClick={() => {
+                  resetSession();
+                  resetAudio();
+                }}
+                className="text-[12px] md:text-[13px] font-medium text-[var(--ink-secondary)] hover:text-[var(--ink)] transition-colors cursor-pointer"
+              >
+                <span className="hidden sm:inline">Start Over</span>
+                <span className="sm:hidden">Reset</span>
+              </button>
+            )}
             <button 
               onClick={onLogout}
               className="text-[12px] md:text-[13px] font-medium text-[var(--ink-secondary)] hover:text-[var(--error)] transition-colors cursor-pointer"
@@ -209,6 +237,9 @@ function ChatWorkspace({ onLogout }) {
               audioData={audioData}
               audioError={audioError}
               onGenerateRetry={generateTrack}
+              mode={mode}
+              setMode={setMode}
+              onStartComposition={handleStartComposition}
             />
           )}
         </div>
