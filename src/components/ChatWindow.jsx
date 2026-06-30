@@ -132,7 +132,8 @@ function CompositionView({
   const scrollContainerRef = useRef(null);
   const history = sessionData?.conversationHistory || [];
   const assistantMessages = history.filter(msg => msg.role === 'assistant');
-  const displayedStep = Math.min(12, Math.max(1, assistantMessages.length));
+  const rawStep = Math.min(12, Math.max(1, assistantMessages.length));
+  const displayedStep = audioStatus === 'success' ? 12 : rawStep;
   const handleSend = (text) => {
     onSendMessage(text);
   };
