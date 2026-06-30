@@ -118,7 +118,14 @@ function PreviewPlayer({ url }) {
 
 // ─── Confidence badge ────────────────────────────────────────────────────────
 function ConfidenceBadge({ score }) {
-  const pct = Math.round((score || 0) * 100);
+  if (score == null) {
+    return (
+      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border text-[var(--ink-muted)] bg-[var(--surface)] border-[var(--hairline)]">
+        confidence N/A
+      </span>
+    );
+  }
+  const pct = Math.round(score * 100);
   const color = pct >= 85 ? 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30'
     : pct >= 65 ? 'text-amber-400 bg-amber-950/40 border-amber-500/30'
     : 'text-[var(--ink-secondary)] bg-[var(--surface)] border-[var(--hairline)]';
@@ -132,11 +139,12 @@ function ConfidenceBadge({ score }) {
 // ─── Source badge ────────────────────────────────────────────────────────────
 function SourceBadge({ source }) {
   const map = {
-    acrcloud: { label: 'ACRCloud', cls: 'text-[var(--accent-glow)] bg-[var(--accent-muted)] border-[var(--accent)]' },
-    audd: { label: 'AudD', cls: 'text-cyan-400 bg-cyan-950/40 border-cyan-500/30' },
-    itunes_search: { label: 'iTunes Search', cls: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30' },
+    acrcloud: { label: 'Apollo Music ID', cls: 'text-[var(--accent-glow)] bg-[var(--accent-muted)] border-[var(--accent)]' },
+    audd: { label: 'Apollo Music ID', cls: 'text-cyan-400 bg-cyan-950/40 border-cyan-500/30' },
+    itunes_search: { label: 'Music Catalog', cls: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30' },
+    apollo_music_id: { label: 'Apollo Music ID', cls: 'text-[var(--accent-glow)] bg-[var(--accent-muted)] border-[var(--accent)]' },
   };
-  const info = map[source] || { label: source, cls: 'text-[var(--ink-secondary)] bg-[var(--surface)] border-[var(--hairline)]' };
+  const info = map[source] || { label: 'Apollo Music ID', cls: 'text-[var(--ink-secondary)] bg-[var(--surface)] border-[var(--hairline)]' };
   return (
     <span className={`text-[9px] font-mono uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${info.cls}`}>
       {info.label}
@@ -327,7 +335,7 @@ export default function HumToSearchPanel() {
               Hum to Search
             </h2>
             <p className="text-[13px] text-[var(--ink-secondary)] mt-1 max-w-[460px] mx-auto leading-relaxed">
-              Hum or sing a melody, upload an audio clip, or search directly by name. Apollo matches using real APIs with no mocks.
+              Hum or sing a melody, upload an audio clip, or search directly by name. Apollo identifies the track for you.
             </p>
           </div>
 
@@ -445,7 +453,7 @@ export default function HumToSearchPanel() {
 
               {recState === 'idle' && (
                 <p className="text-[10px] text-[var(--ink-muted)] text-center">
-                  Requires microphone permission (HTTPS or localhost)
+                  Requires microphone permission
                 </p>
               )}
             </div>
@@ -711,7 +719,7 @@ export default function HumToSearchPanel() {
                   />
                 </div>
                 <p className="text-[10px] text-[var(--ink-muted)] mt-3 text-center">
-                  Hover over a spectrogram to scan it. Reference audio sourced via iTunes Search API.
+                  Hover over a spectrogram to scan it.
                 </p>
               </div>
 

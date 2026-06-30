@@ -34,7 +34,7 @@ function ModeDashboard({ setMode, onStartComposition }) {
       description: 'Hum, sing, or upload a short clip. Apollo analyses it, identifies the song, and shows side-by-side spectrograms.',
       accentClass: 'border-[var(--wave)] shadow-[0_0_32px_rgba(6,182,212,0.12)] hover:shadow-[0_0_48px_rgba(6,182,212,0.28)]',
       iconBg: 'bg-[var(--wave-muted)] text-[var(--wave)]',
-      badge: 'New',
+      badge: 'BETA',
       badgeClass: 'bg-[var(--wave-muted)] text-[var(--wave)] border-[var(--wave)]/40',
     },
     {
@@ -42,7 +42,7 @@ function ModeDashboard({ setMode, onStartComposition }) {
       icon: <ShieldCheck size={28} />,
       title: 'Audio Verification',
       subtitle: 'Instant origin analysis',
-      description: 'Upload any audio file. Apollo scans for AI watermarks, runs Hive AI classification, and extracts Librosa metrics.',
+      description: 'Upload any audio file. Apollo analyses origin, detects AI watermarks, and extracts acoustic signatures.',
       accentClass: 'border-emerald-500/30 shadow-[0_0_32px_rgba(16,185,129,0.08)] hover:shadow-[0_0_48px_rgba(16,185,129,0.22)]',
       iconBg: 'bg-emerald-950/40 text-emerald-400',
       badge: null,
@@ -116,7 +116,7 @@ function ModeDashboard({ setMode, onStartComposition }) {
 
       {/* Footer hint */}
       <p className="mt-8 text-[11px] text-[var(--ink-muted)] text-center">
-        All modes require a valid session. Your data is secured via Supabase.
+        All modes require a valid session. Your data is secured with Apollo AI.
       </p>
     </div>
   );
@@ -133,32 +133,12 @@ function CompositionView({
   const history = sessionData?.conversationHistory || [];
   const assistantMessages = history.filter(msg => msg.role === 'assistant');
   const displayedStep = Math.min(12, Math.max(1, assistantMessages.length));
-  const [customPlaceholder, setCustomPlaceholder] = useState(null);
-
   const handleSend = (text) => {
     onSendMessage(text);
-    setCustomPlaceholder(null);
   };
 
   const handleChoice = (optionText) => {
-    const lower = optionText.toLowerCase();
-    const isCustom = lower.includes('custom') || lower.includes('write your own') || lower.includes('specify your own');
-    if (isCustom) {
-      const getCustomPlaceholderText = (text) => {
-        const t = text.toLowerCase();
-        if (t.includes('artist')) return "Enter custom artist name...";
-        if (t.includes('genre')) return "Enter custom genre flavor...";
-        if (t.includes('instrument')) return "Enter custom instrument name...";
-        if (t.includes('mood')) return "Enter custom mood...";
-        return "Enter custom choice...";
-      };
-      setCustomPlaceholder(getCustomPlaceholderText(optionText));
-      const input = document.querySelector('input[type="text"]');
-      if (input) input.focus();
-    } else {
-      onSendMessage(optionText);
-      setCustomPlaceholder(null);
-    }
+    onSendMessage(optionText);
   };
 
   const extractChoices = (msg) => {
@@ -182,7 +162,6 @@ function CompositionView({
   const isFallback = parsedChoices.length === 0 && fallbackChoices.length > 0;
 
   useEffect(() => {
-    setCustomPlaceholder(null);
     if (scrollContainerRef.current) {
       const isAssistant = lastMsg?.role === 'assistant';
       const hasChips = !loading && audioStatus !== 'generating' && audioStatus !== 'success' && choices.length > 0;
@@ -275,7 +254,6 @@ function CompositionView({
         onBack={sessionData?.step > 1 ? onBack : null}
         onSkip={choices.length > 0 && audioStatus !== 'success' ? () => handleChoice(choices[0]) : null}
         disabled={loading || audioStatus === 'generating'}
-        placeholder={customPlaceholder}
       />
     </div>
   );

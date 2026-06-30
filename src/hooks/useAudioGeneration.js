@@ -87,7 +87,7 @@ export function useAudioGeneration(sessionId, compositionState = null, setSessio
       } else if (httpStatus === 500 || detail?.includes("Generation failed") || detail?.includes("credits") || detail?.includes("insufficient")) {
         setErrorMsg("We are experiencing high generation demand. Please try again in a few moments.");
       } else {
-        setErrorMsg(detail || "Failed to generate track. Please try again.");
+        setErrorMsg("Something went wrong with your track. Please try again.");
       }
     }
   }, [sessionId, setSessionData]);

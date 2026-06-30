@@ -4,10 +4,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    'Supabase environment variables are missing! ' +
-    'Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in client/.env'
-  );
+  console.warn('[Apollo] Auth service environment variables are not configured.');
 }
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');

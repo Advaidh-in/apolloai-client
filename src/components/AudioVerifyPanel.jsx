@@ -7,9 +7,10 @@ import {
 
 // ─── Animated status steps during loading ───────────────────────────────────
 const STEPS = [
-  { label: 'Scanning ID3 metadata watermarks...', duration: 1600 },
-  { label: 'Running Hive AI classification...', duration: 2200 },
-  { label: 'Extracting Librosa features (BPM, spectral centroid)...', duration: 1800 },
+  { label: 'Scanning embedded metadata watermarks...', duration: 1600 },
+  { label: 'Classifying audio origin...', duration: 2200 },
+  { label: 'Analysing acoustic features...', duration: 1800 },
+  { label: 'Running similarity scan...', duration: 2500 },
   { label: 'Compiling verification report...', duration: 800 },
 ];
 
@@ -103,7 +104,7 @@ function OriginBadge({ originType, provider, status }) {
       </span>
       {provider && provider !== 'unknown' && provider !== 'none' && (
         <span className="text-[10px] font-mono uppercase font-bold tracking-wider px-2.5 py-1 rounded-full border border-[var(--hairline)] bg-[var(--surface)] text-[var(--ink-secondary)]">
-          {provider}
+          Apollo AI
         </span>
       )}
     </div>
@@ -131,7 +132,7 @@ function ConfidenceBar({ score }) {
   );
 }
 
-// ─── Librosa metrics grid ────────────────────────────────────────────────────
+// ─── Acoustic metrics grid ───────────────────────────────────────────────────
 function LibrosaGrid({ metrics }) {
   if (!metrics || metrics.error) return null;
 
@@ -165,7 +166,7 @@ function LibrosaGrid({ metrics }) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[11px] uppercase font-bold tracking-widest text-[var(--ink-muted)]">
-        Librosa Audio Features
+        Acoustic Analysis
       </p>
       <div className="grid grid-cols-2 gap-2">
         {cells.map((cell, i) => (
@@ -185,6 +186,89 @@ function LibrosaGrid({ metrics }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Plagiarism / similarity card ────────────────────────────────────────────
+function PlagiarismCard({ plagiarism }) {
+  if (!plagiarism || Object.keys(plagiarism).length === 0) return null;
+
+  const { plagiarismScore, validationPassed, sha256, message, matchedTrack } = plagiarism;
+  const noScore = plagiarismScore === null || plagiarismScore === undefined;
+  const pct = noScore ? null : Math.round(plagiarismScore * 100);
+
+  let badgeCls, badgeLabel, badgeIcon;
+  if (validationPassed === null || validationPassed === undefined) {
+    badgeCls = 'text-zinc-400 bg-zinc-800 border-zinc-700';
+    badgeLabel = 'Unverified';
+    badgeIcon = <AlertTriangle size={11} />;
+  } else if (validationPassed === false) {
+    badgeCls = 'text-red-400 bg-red-950/40 border-red-500/30';
+    badgeLabel = 'Match Detected';
+    badgeIcon = <AlertCircle size={11} />;
+  } else {
+    badgeCls = 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30';
+    badgeLabel = 'Original';
+    badgeIcon = <CheckCircle2 size={11} />;
+  }
+
+  const barColor = noScore ? 'bg-zinc-600'
+    : pct > 80 ? 'bg-red-500'
+    : pct > 40 ? 'bg-amber-500'
+    : 'bg-emerald-500';
+
+  return (
+    <div className={`glass-panel rounded-2xl border p-5 flex flex-col gap-4 ${
+      validationPassed === false
+        ? 'border-red-500/30 shadow-[0_0_24px_rgba(239,68,68,0.08)]'
+        : validationPassed === true
+        ? 'border-emerald-500/20'
+        : 'border-[var(--hairline)]'
+    }`}>
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] uppercase font-bold tracking-widest text-[var(--ink-muted)]">
+          Similarity Scan
+        </p>
+        <span className={`flex items-center gap-1 text-[10px] font-mono uppercase font-bold tracking-wider px-2.5 py-1 rounded-full border ${badgeCls}`}>
+          {badgeIcon}
+          {badgeLabel}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="flex justify-between text-[11px]">
+          <span className="text-[var(--ink-secondary)] font-medium">Similarity Score</span>
+          <span className="font-mono font-bold text-[var(--ink)]">
+            {noScore ? 'N/A' : `${pct}%`}
+          </span>
+        </div>
+        <div className="h-2 rounded-full bg-[var(--surface)] overflow-hidden">
+          <div
+            className={`h-full rounded-full ${barColor} transition-all duration-700`}
+            style={{ width: noScore ? '0%' : `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      {matchedTrack && (
+        <div className="flex flex-col gap-0.5 p-3 rounded-xl bg-[var(--canvas)] border border-red-500/20">
+          <p className="text-[9px] uppercase font-bold tracking-wider text-[var(--ink-muted)]">Closest Match</p>
+          <p className="text-[13px] font-semibold text-[var(--ink)] mt-0.5">{matchedTrack.title}</p>
+          <p className="text-[11px] text-[var(--ink-secondary)]">{matchedTrack.artist}</p>
+        </div>
+      )}
+
+      {message && (
+        <p className="text-[11px] text-[var(--ink-muted)] leading-relaxed">{message}</p>
+      )}
+
+      {sha256 && (
+        <div className="flex flex-col gap-1">
+          <p className="text-[9px] uppercase font-bold tracking-wider text-[var(--ink-muted)]">Content Hash</p>
+          <p className="text-[9px] font-mono text-[var(--ink-secondary)] break-all leading-relaxed">{sha256}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -254,7 +338,7 @@ export default function AudioVerifyPanel() {
             Audio Verification
           </h2>
           <p className="text-[13px] text-[var(--ink-secondary)] mt-1 max-w-[440px] mx-auto leading-relaxed">
-            Upload any audio file. Apollo scans for AI watermarks (Suno, Udio), runs Hive AI classification, and extracts Librosa acoustic features.
+            Upload any audio file. Apollo analyses its origin, detects AI watermarks, extracts acoustic signatures, and runs a similarity scan.
           </p>
         </div>
 
@@ -337,7 +421,7 @@ export default function AudioVerifyPanel() {
                   Verifying audio...
                 </p>
                 <p className="text-[11px] text-[var(--ink-secondary)] mt-0.5">
-                  This may take 15–30 seconds
+                  This may take 20–45 seconds
                 </p>
               </div>
             </div>
@@ -389,10 +473,13 @@ export default function AudioVerifyPanel() {
               </div>
             </div>
 
-            {/* Librosa metrics */}
+            {/* Acoustic metrics */}
             <div className="glass-panel rounded-2xl border border-[var(--hairline)] p-5">
-              <LibrosaGrid metrics={result.librosa} />
+              <LibrosaGrid metrics={result.acousticAnalysis} />
             </div>
+
+            {/* Similarity scan */}
+            <PlagiarismCard plagiarism={result.plagiarism} />
 
             {/* Verify another */}
             <button
