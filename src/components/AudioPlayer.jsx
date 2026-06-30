@@ -431,7 +431,7 @@ export default function AudioPlayer({ audioData, onFeedback }) {
         {/* Track Title and cover */}
         <div className="flex gap-4">
           <img 
-            src={coverArtUrl || 'https://picsum.photos/80'} 
+            src={coverArtUrl || `https://picsum.photos/seed/${(audioData.trackId || title || 'apollo').replace(/\s/g,'').slice(0,8)}/80/80`}
             alt="Cover Art" 
             className="w-[80px] h-[80px] rounded-[8px] object-cover bg-slate-800"
           />
