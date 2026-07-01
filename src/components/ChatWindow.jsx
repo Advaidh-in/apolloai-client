@@ -19,7 +19,7 @@ function ModeDashboard({ setMode, onStartComposition }) {
       id: 'composition',
       icon: <Music2 size={28} />,
       title: 'Guided Composition',
-      subtitle: '24-step AI music wizard',
+      subtitle: '12-step AI music wizard',
       description: 'Answer Apollo\'s questions to craft a fully personalized track — genre, mood, tempo, instruments, and more.',
       accentClass: 'border-[var(--accent)] shadow-[0_0_32px_rgba(124,58,237,0.18)] hover:shadow-[0_0_48px_rgba(124,58,237,0.35)]',
       iconBg: 'bg-[var(--accent-muted)] text-[var(--accent-glow)]',
@@ -146,9 +146,20 @@ function CompositionView({
     if (!msg || msg.role !== 'assistant') return [];
     const lines = msg.content.split('\n');
     return lines
-      .filter(l => l.trim().startsWith('-') || l.trim().startsWith('*'))
-      .map(l => l.replace(/^[-*]\s*/, '').trim())
-      .filter(l => l.length > 0);
+      .filter(l => l.trim().startsWith('-') || l.trim().match(/^\*\s+\S/))
+      .map(l => {
+        let text = l.replace(/^[-*]\s*/, '').trim();
+        // Strip **bold** and *italic* markers
+        text = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+        // "Option name: long explanation" → keep only the name
+        const colonIdx = text.indexOf(':');
+        if (colonIdx > 0) text = text.slice(0, colonIdx).trim();
+        // "Option name (parenthetical description)" → keep only the name
+        const parenIdx = text.indexOf(' (');
+        if (parenIdx > 0) text = text.slice(0, parenIdx).trim();
+        return text;
+      })
+      .filter(l => l.length > 0 && l.length <= 60);
   };
 
   const lastMsg = history[history.length - 1];
@@ -206,7 +217,7 @@ function CompositionView({
                 Begin Composition
               </h2>
               <p className="text-[13px] text-[var(--ink-secondary)] leading-relaxed">
-                Apollo will guide you through a 24-step musical orchestration questionnaire. Answer using choice chips or type custom responses.
+                Apollo will guide you through a 12-step musical orchestration questionnaire. Answer using choice chips or type custom responses.
               </p>
             </div>
           )}
