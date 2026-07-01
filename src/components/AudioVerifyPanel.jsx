@@ -1,61 +1,27 @@
 import { useState, useRef, useEffect } from 'react';
 import api from '../utils/api';
 import {
-  ShieldCheck, Upload, RefreshCw, AlertCircle, Loader2,
+  ShieldCheck, Upload, RefreshCw, AlertCircle,
   CheckCircle2, AlertTriangle, Cpu, Activity, Clock, Zap
 } from 'lucide-react';
 
-// ─── Animated status steps during loading ───────────────────────────────────
-const STEPS = [
-  { label: 'Scanning embedded metadata watermarks...', duration: 1600 },
-  { label: 'Classifying audio origin...', duration: 2200 },
-  { label: 'Analysing acoustic features...', duration: 1800 },
-  { label: 'Running similarity scan...', duration: 2500 },
-  { label: 'Compiling verification report...', duration: 800 },
-];
-
-function LoadingSteps({ active }) {
-  const [stepIdx, setStepIdx] = useState(0);
+// ─── Real elapsed-time counter during loading (no simulated/fake progress) ──
+function ElapsedTimer({ active }) {
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    if (!active) return;
-    let idx = 0;
-    let timeoutId;
-    const advance = () => {
-      setStepIdx(i => {
-        idx = i + 1;
-        return i + 1;
-      });
-      if (idx < STEPS.length) {
-        timeoutId = setTimeout(advance, STEPS[idx]?.duration || 1000);
-      }
-    };
-    timeoutId = setTimeout(advance, STEPS[0].duration);
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    if (!active) {
+      setElapsed(0);
+      return;
+    }
+    const id = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(id);
   }, [active]);
 
   return (
-    <div className="flex flex-col gap-2 w-full">
-      {STEPS.map((step, i) => (
-        <div
-          key={i}
-          className={`flex items-center gap-2.5 text-[12px] transition-all duration-300 ${
-            i < stepIdx ? 'text-[var(--success)]' : i === stepIdx ? 'text-[var(--ink)]' : 'text-[var(--ink-muted)]'
-          }`}
-        >
-          {i < stepIdx ? (
-            <CheckCircle2 size={13} className="text-[var(--success)] shrink-0" />
-          ) : i === stepIdx ? (
-            <Loader2 size={13} className="animate-spin text-[var(--accent)] shrink-0" />
-          ) : (
-            <div className="w-[13px] h-[13px] rounded-full border border-[var(--hairline)] shrink-0" />
-          )}
-          <span>{step.label}</span>
-        </div>
-      ))}
-    </div>
+    <p className="text-[11px] text-[var(--ink-secondary)] mt-0.5 font-mono">
+      {elapsed}s elapsed
+    </p>
   );
 }
 
@@ -420,12 +386,9 @@ export default function AudioVerifyPanel() {
                 <p className="text-[14px] font-semibold text-[var(--ink)] font-['Space_Grotesk']">
                   Verifying audio...
                 </p>
-                <p className="text-[11px] text-[var(--ink-secondary)] mt-0.5">
-                  This may take 20–45 seconds
-                </p>
+                <ElapsedTimer active={loading} />
               </div>
             </div>
-            <LoadingSteps active={loading} />
           </div>
         )}
 

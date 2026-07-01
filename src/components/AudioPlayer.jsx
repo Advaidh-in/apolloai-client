@@ -491,7 +491,7 @@ export default function AudioPlayer({ audioData, onFeedback }) {
 
           <div className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
             {isCompliancePassed 
-              ? "All fingerprinting database matching complete. No plagiarism detected. This track is clear for deployment and distribution."
+              ? "All fingerprinting database matching complete. No plagiarism detected."
               : "Similarity scanning matched active fingerprints above the safety threshold. We recommend adjusting chords or arrangement and regenerating."}
           </div>
 
