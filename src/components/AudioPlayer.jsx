@@ -139,76 +139,6 @@ export default function AudioPlayer({ audioData, onFeedback }) {
   const historyRows = 32;
   const cols = 40;
 
-  // Plagiarism Scanner States
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [selectedReference, setSelectedReference] = useState('badguy');
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanComplete, setScanComplete] = useState(false);
-
-  const referenceTracks = {
-    badguy: {
-      name: "Billie Eilish - Bad Guy",
-      genre: "Pop / Dark Pop",
-      bpm: "135 BPM",
-      key: "G Minor",
-      melodicMatch: 4.2,
-      rhythmicMatch: 8.5,
-      harmonicMatch: 2.1,
-      totalSimilarity: 14.8,
-      hotspots: [
-        { time: "0:12", freq: "120Hz (Sub-bass)", overlap: "Minor rhythmic syncopation overlap" }
-      ]
-    },
-    getlucky: {
-      name: "Daft Punk - Get Lucky",
-      genre: "House / Disco",
-      bpm: "116 BPM",
-      key: "B Dorian",
-      melodicMatch: 1.5,
-      rhythmicMatch: 12.3,
-      harmonicMatch: 4.8,
-      totalSimilarity: 18.6,
-      hotspots: [
-        { time: "0:45", freq: "3.2kHz (Guitars)", overlap: "Funk off-beat strum pattern spacing" }
-      ]
-    },
-    sowhat: {
-      name: "Miles Davis - So What",
-      genre: "Jazz / Modal",
-      bpm: "92 BPM",
-      key: "D Dorian",
-      melodicMatch: 2.8,
-      rhythmicMatch: 1.1,
-      harmonicMatch: 8.4,
-      totalSimilarity: 12.3,
-      hotspots: [
-        { time: "1:15", freq: "880Hz (Trumpet)", overlap: "Modal scalar intervals (Dorian roots)" }
-      ]
-    },
-    breathe: {
-      name: "Pink Floyd - Breathe",
-      genre: "Rock / Psychedelic",
-      bpm: "64 BPM",
-      key: "E Minor",
-      melodicMatch: 5.1,
-      rhythmicMatch: 3.4,
-      harmonicMatch: 6.9,
-      totalSimilarity: 15.4,
-      hotspots: [
-        { time: "0:30", freq: "250Hz (Hammond)", overlap: "Slow tempo chord progression spacing" }
-      ]
-    }
-  };
-
-  const handleScan = () => {
-    setIsScanning(true);
-    setScanComplete(false);
-    setTimeout(() => {
-      setIsScanning(false);
-      setScanComplete(true);
-    }, 2500);
-  };
-
   useEffect(() => {
     const audioEl = audioRef.current;
     if (audioEl) {
@@ -561,7 +491,7 @@ export default function AudioPlayer({ audioData, onFeedback }) {
 
           <div className="text-[12px] text-[var(--ink-secondary)] leading-relaxed">
             {isCompliancePassed 
-              ? "All fingerprinting database matching complete. No plagiarism detected. You can safely deploy and monetize this track."
+              ? "All fingerprinting database matching complete. No plagiarism detected. This track is clear for deployment and distribution."
               : "Similarity scanning matched active fingerprints above the safety threshold. We recommend adjusting chords or arrangement and regenerating."}
           </div>
 
@@ -575,254 +505,29 @@ export default function AudioPlayer({ audioData, onFeedback }) {
             </div>
           </div>
 
-          {/* Plagiarism Analyzer Expandable Section */}
-          <div className="mt-1 pt-2 border-t border-[var(--hairline)]/50">
-            <button
-              onClick={() => setIsScannerOpen(!isScannerOpen)}
-              className="w-full flex items-center justify-between py-2 px-3 bg-[var(--surface)] hover:bg-[var(--surface-hover)] rounded-lg text-[12px] text-[var(--ink)] border border-[var(--hairline)] transition-all cursor-pointer font-medium"
-            >
-              <span className="flex items-center gap-1.5">
-                <Shield size={13} className="text-[var(--accent)] animate-pulse" />
-                Spectrogram Plagiarism Analyzer
-              </span>
-              <span className="text-[10px] text-[var(--ink-muted)] font-mono">
-                {isScannerOpen ? "Collapse ▲" : "Compare Spectrograms ▼"}
-              </span>
-            </button>
-          </div>
-
-          {isScannerOpen && (
-            <div className="flex flex-col gap-4 mt-2 p-3 bg-[var(--surface)]/50 border border-[var(--hairline)] rounded-lg text-[12px] animate-message-in">
-              <style>{`
-                @keyframes laser-scan {
-                  0% { left: 0%; }
-                  100% { left: 100%; }
-                }
-              `}</style>
-              
-              <div className="flex justify-between items-center gap-4 flex-wrap">
-                <div>
-                  <div className="font-bold text-[var(--ink)]">Anti-Plagiarism Reference Scan</div>
-                  <div className="text-[10px] text-[var(--ink-muted)]">Compare spectrogram signatures with commercial tracks</div>
-                </div>
-                
-                {/* Reference Track Dropdown */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-[var(--ink-secondary)]">Reference:</span>
-                  <select
-                    value={selectedReference}
-                    onChange={(e) => {
-                      setSelectedReference(e.target.value);
-                      setScanComplete(false);
-                    }}
-                    disabled={isScanning}
-                    className="bg-[var(--canvas)] border border-[var(--hairline)] rounded px-2 py-1 text-[11px] text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-                  >
-                    {Object.entries(referenceTracks).map(([key, ref]) => (
-                      <option key={key} value={key}>{ref.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Spectrogram Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative">
-                
-                {/* Your Spectrogram */}
-                <div className="relative border border-[var(--hairline)] rounded-lg bg-slate-950 p-2 overflow-hidden flex flex-col gap-1">
-                  <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                    <span>Your Track (Spectrogram)</span>
-                    <span className="text-[var(--accent)] font-semibold font-mono">Original</span>
+          {/* Fingerprint Scan Summary — real data from validation pipeline */}
+          {validation && (
+            <div className="mt-1 pt-2 border-t border-[var(--hairline)]/50">
+              <div className="p-3 bg-[var(--surface)]/50 border border-[var(--hairline)] rounded-lg text-[12px] flex flex-col gap-2">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--ink-muted)]">Fingerprint Scan — Database Results</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-[var(--canvas)] p-2 rounded border border-[var(--hairline)]">
+                    <span className="text-[9px] uppercase font-bold text-[var(--ink-muted)] tracking-wide block mb-0.5">Similarity Score</span>
+                    <span className={`text-[15px] font-bold font-mono ${plagScore <= 25 ? 'text-emerald-400' : 'text-red-400'}`}>{plagScore.toFixed(1)}%</span>
                   </div>
-                  
-                  <div className="relative w-full h-[90px] bg-slate-900 rounded overflow-hidden">
-                    {/* SVG Heatmap drawing */}
-                    <svg className="w-full h-full" viewBox="0 0 250 90">
-                      {/* Grid Lines */}
-                      <g stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" strokeDasharray="3,3">
-                        <line x1="0" y1="22.5" x2="250" y2="22.5" />
-                        <line x1="0" y1="45" x2="250" y2="45" />
-                        <line x1="0" y1="67.5" x2="250" y2="67.5" />
-                        <line x1="62.5" y1="0" x2="62.5" y2="90" />
-                        <line x1="125" y1="0" x2="125" y2="90" />
-                        <line x1="187.5" y1="0" x2="187.5" y2="90" />
-                      </g>
-                      
-                      {/* Gradients */}
-                      <defs>
-                        <linearGradient id="grad-original" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.8" />
-                          <stop offset="35%" stopColor="#9333ea" stopOpacity="0.8" />
-                          <stop offset="70%" stopColor="#ec4899" stopOpacity="0.8" />
-                          <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.8" />
-                        </linearGradient>
-                      </defs>
-                      
-                      {/* Wave Energy Fill */}
-                      <path d="M 0 90 L 0 65 Q 30 10, 60 70 T 120 40 T 180 80 T 240 50 L 250 50 L 250 90 Z" fill="url(#grad-original)" opacity="0.65" />
-                      <path d="M 0 90 L 0 75 Q 40 30, 80 80 T 160 50 T 240 85 L 250 85 L 250 90 Z" fill="#3b82f6" opacity="0.4" />
-                      
-                      {/* High freq nodes */}
-                      <circle cx="50" cy="25" r="3" fill="#fbbf24" opacity="0.7" className="animate-pulse" />
-                      <circle cx="130" cy="15" r="2" fill="#fbbf24" opacity="0.7" />
-                      <circle cx="190" cy="30" r="3" fill="#22c55e" opacity="0.6" />
-                      
-                      {/* Scan Hotspot Highlight */}
-                      {scanComplete && (
-                        <g>
-                          <ellipse cx="125" cy="45" rx="15" ry="10" fill="none" stroke="#e11d48" strokeWidth="1.5" strokeDasharray="3,2" />
-                          <circle cx="125" cy="45" r="2" fill="#e11d48" />
-                        </g>
-                      )}
-                    </svg>
-                    
-                    {/* Laser Scanner Line */}
-                    {isScanning && (
-                      <div 
-                        className="absolute top-0 bottom-0 w-[2px] bg-cyan-400 shadow-[0_0_10px_#22d3ee,0_0_20px_#22d3ee] pointer-events-none"
-                        style={{
-                          animation: 'laser-scan 2.5s linear infinite',
-                          left: '0%',
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div className="flex justify-between text-[8px] text-slate-500 font-mono">
-                    <span>20Hz</span>
-                    <span>1.2kHz</span>
-                    <span>20kHz</span>
-                  </div>
-                </div>
-
-                {/* Reference Spectrogram */}
-                <div className="relative border border-[var(--hairline)] rounded-lg bg-slate-950 p-2 overflow-hidden flex flex-col gap-1">
-                  <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                    <span className="truncate max-w-[120px]">{referenceTracks[selectedReference].name}</span>
-                    <span className="text-amber-500 font-semibold font-mono text-[8px]">{referenceTracks[selectedReference].genre}</span>
-                  </div>
-                  
-                  <div className="relative w-full h-[90px] bg-slate-900 rounded overflow-hidden">
-                    <svg className="w-full h-full" viewBox="0 0 250 90">
-                      {/* Grid Lines */}
-                      <g stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" strokeDasharray="3,3">
-                        <line x1="0" y1="22.5" x2="250" y2="22.5" />
-                        <line x1="0" y1="45" x2="250" y2="45" />
-                        <line x1="0" y1="67.5" x2="250" y2="67.5" />
-                        <line x1="62.5" y1="0" x2="62.5" y2="90" />
-                        <line x1="125" y1="0" x2="125" y2="90" />
-                        <line x1="187.5" y1="0" x2="187.5" y2="90" />
-                      </g>
-                      
-                      <defs>
-                        <linearGradient id="grad-ref" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.7" />
-                          <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.7" />
-                          <stop offset="100%" stopColor="#10b981" stopOpacity="0.7" />
-                        </linearGradient>
-                      </defs>
-                      
-                      {/* Dynamic Reference Wave Path */}
-                      <path 
-                        d={`M 0 90 L 0 50 Q ${selectedReference === 'badguy' ? '70 80, 140 20' : selectedReference === 'getlucky' ? '40 20, 100 80' : selectedReference === 'sowhat' ? '90 60, 150 15' : '60 30, 160 70'} T 250 60 L 250 90 Z`}
-                        fill="url(#grad-ref)" 
-                        opacity="0.5" 
-                      />
-                      
-                      {/* Reference specific scatter points */}
-                      <circle cx="80" cy="35" r="2.5" fill="#f43f5e" opacity="0.6" />
-                      <circle cx="160" cy="20" r="3.5" fill="#10b981" opacity="0.6" />
-                      
-                      {/* Scan Hotspot Overlap Highlight */}
-                      {scanComplete && (
-                        <g>
-                          <ellipse cx="125" cy="45" rx="15" ry="10" fill="none" stroke="#e11d48" strokeWidth="1.5" strokeDasharray="3,2" />
-                          <circle cx="125" cy="45" r="2" fill="#e11d48" />
-                        </g>
-                      )}
-                    </svg>
-                    
-                    {/* Laser Scanner Line */}
-                    {isScanning && (
-                      <div 
-                        className="absolute top-0 bottom-0 w-[2px] bg-cyan-400 shadow-[0_0_10px_#22d3ee,0_0_20px_#22d3ee] pointer-events-none"
-                        style={{
-                          animation: 'laser-scan 2.5s linear infinite',
-                          left: '0%',
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div className="flex justify-between text-[8px] text-slate-500 font-mono">
-                    <span>20Hz</span>
-                    <span>1.2kHz</span>
-                    <span>20kHz</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-between items-center gap-3 mt-1">
-                <button
-                  onClick={handleScan}
-                  disabled={isScanning}
-                  className="px-4 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-glow)] disabled:bg-slate-700 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 select-none"
-                >
-                  {isScanning ? (
-                    <>
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Analyzing...</span>
-                    </>
-                  ) : (
-                    <span>Run Plagiarism Scan</span>
-                  )}
-                </button>
-
-                <div className="text-[10px] text-[var(--ink-muted)]">
-                  Scan Speed: ~2.5s
-                </div>
-              </div>
-
-              {/* Comparison Results */}
-              {scanComplete && (
-                <div className="p-3 bg-[var(--canvas)] border border-[var(--hairline)] rounded-xl flex flex-col gap-2 animate-message-in">
-                  <div className="flex justify-between items-center border-b border-[var(--hairline)]/50 pb-2">
-                    <span className="font-bold text-[var(--ink)] flex items-center gap-1">
-                      <CheckCircle2 size={13} className="text-[var(--success)]" /> Analysis Result
-                    </span>
-                    <span className="text-[11px] font-mono font-bold text-[var(--success)]">
-                      Total Overlap: {referenceTracks[selectedReference].totalSimilarity}% (SAFE)
+                  <div className="bg-[var(--canvas)] p-2 rounded border border-[var(--hairline)]">
+                    <span className="text-[9px] uppercase font-bold text-[var(--ink-muted)] tracking-wide block mb-0.5">Closest Match</span>
+                    <span className="text-[11px] text-[var(--ink)] font-semibold truncate block">
+                      {validation.matchedTrack
+                        ? `${validation.matchedTrack.title} — ${validation.matchedTrack.artist}`
+                        : 'None detected'}
                     </span>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-[10px] text-center">
-                    <div className="bg-[var(--surface)] p-1.5 rounded border border-[var(--hairline)]">
-                      <span className="text-[var(--ink-muted)] block uppercase font-bold tracking-wide text-[8px]">Melodic</span>
-                      <span className="text-[var(--ink)] font-semibold">{referenceTracks[selectedReference].melodicMatch}% Match</span>
-                    </div>
-                    <div className="bg-[var(--surface)] p-1.5 rounded border border-[var(--hairline)]">
-                      <span className="text-[var(--ink-muted)] block uppercase font-bold tracking-wide text-[8px]">Rhythmic</span>
-                      <span className="text-[var(--ink)] font-semibold">{referenceTracks[selectedReference].rhythmicMatch}% Match</span>
-                    </div>
-                    <div className="bg-[var(--surface)] p-1.5 rounded border border-[var(--hairline)]">
-                      <span className="text-[var(--ink-muted)] block uppercase font-bold tracking-wide text-[8px]">Harmonic</span>
-                      <span className="text-[var(--ink)] font-semibold">{referenceTracks[selectedReference].harmonicMatch}% Match</span>
-                    </div>
-                  </div>
-
-                  {/* Hotspots Info */}
-                  <div className="text-[11px] text-[var(--ink-secondary)] leading-relaxed mt-1">
-                    <span className="font-bold text-[var(--ink)]">Hotspot Overlap:</span>
-                    <ul className="list-disc pl-4 mt-1 space-y-1">
-                      {referenceTracks[selectedReference].hotspots.map((hot, hIdx) => (
-                        <li key={hIdx}>
-                          At <strong className="font-mono">{hot.time}</strong> at <strong className="font-mono">{hot.freq}</strong>: <em>{hot.overlap}</em>.
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
                 </div>
-              )}
+                <div className="text-[10px] text-[var(--ink-muted)] leading-relaxed">
+                  Scanned against AcoustID + AudD fingerprint databases. Score reflects acoustic similarity to existing registered works.
+                </div>
+              </div>
             </div>
           )}
         </div>

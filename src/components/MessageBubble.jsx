@@ -1,20 +1,55 @@
 import { Info } from 'lucide-react';
 
+// Render **bold**, *italic*, and plain text inline without a markdown library
+function renderInline(text) {
+  const parts = [];
+  const re = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
+  let last = 0, m, i = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(<span key={i++}>{text.slice(last, m.index)}</span>);
+    if (m[2] !== undefined) parts.push(<strong key={i++}>{m[2]}</strong>);
+    else if (m[3] !== undefined) parts.push(<em key={i++}>{m[3]}</em>);
+    last = re.lastIndex;
+  }
+  if (last < text.length) parts.push(<span key={i++}>{text.slice(last)}</span>);
+  return parts;
+}
+
+function FormattedMessage({ content }) {
+  return (
+    <div className="leading-relaxed space-y-1">
+      {content.split('\n').map((line, idx) => {
+        const trimmed = line.trimStart();
+        // Bullet lines (- or * followed by space + non-*)
+        if (trimmed.startsWith('- ') || trimmed.match(/^\*\s+\S/)) {
+          const body = trimmed.replace(/^[-*]\s+/, '');
+          return (
+            <div key={idx} className="flex gap-2">
+              <span className="text-[var(--accent-glow)] mt-px shrink-0">•</span>
+              <span>{renderInline(body)}</span>
+            </div>
+          );
+        }
+        return <p key={idx}>{renderInline(line)}</p>;
+      })}
+    </div>
+  );
+}
+
 export default function MessageBubble({ message }) {
   const isUser = message.role === 'user';
-  
+
   const handleInfoClick = (e) => {
     e.stopPropagation();
-    console.log("ⓘ Clicked! Dispatching concept open event for text:", message.content);
-    const event = new CustomEvent('open-theory-concept', { 
-      detail: { content: message.content } 
+    const event = new CustomEvent('open-theory-concept', {
+      detail: { content: message.content }
     });
     window.dispatchEvent(event);
   };
-  
+
   return (
     <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} items-start animate-message-in gap-2`}>
-      
+
       {/* Apollo avatar — left side for assistant */}
       {!isUser && (
         <div className="w-[28px] h-[28px] shrink-0 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent-glow)] flex items-center justify-center shadow-[0_0_10px_var(--accent-muted)] mt-1">
@@ -23,16 +58,17 @@ export default function MessageBubble({ message }) {
       )}
 
       {/* Message bubble */}
-      <div 
+      <div
         className={`${
-          isUser 
-            ? 'bg-[var(--accent-muted)] border border-[var(--accent-deep)] rounded-[16px_16px_4px_16px] max-w-[80%]' 
+          isUser
+            ? 'bg-[var(--accent-muted)] border border-[var(--accent-deep)] rounded-[16px_16px_4px_16px] max-w-[80%]'
             : 'bg-[var(--canvas-elevated)] border border-[var(--hairline)] rounded-[16px_16px_16px_4px] max-w-[80%]'
         } p-[14px_20px] text-[14px] text-[var(--ink)]`}
       >
-        <div className="whitespace-pre-wrap leading-relaxed">
-          {message.content}
-        </div>
+        {isUser
+          ? <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
+          : <FormattedMessage content={message.content} />
+        }
       </div>
 
       {/* ⓘ Info button — shown on the outer edge of every bubble */}
